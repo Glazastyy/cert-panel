@@ -96,6 +96,17 @@ html(lang='pt-BR', data-bs-theme='light')
           | #{success}
       
       block content
+
+    if requireNameCorrection
+      #nameCorrectionModal.modal.fade(tabindex='-1', data-bs-backdrop='static', data-bs-keyboard='false')
+        .modal-dialog.modal-dialog-centered
+          .modal-content
+            .modal-header.bg-warning
+              h5.modal-title Corrija seu nome completo
+            .modal-body
+              p.mb-0 Seu cadastro precisa ter nome e sobrenome, em letras maiúsculas e sem caracteres especiais. Atualize seu perfil para continuar com os dados corretos.
+            .modal-footer
+              a.btn.btn-primary(href='/dashboard/profile') Corrigir Agora
     
     footer.footer.mt-auto.py-3.bg-light
       .container.text-center
@@ -104,4 +115,12 @@ html(lang='pt-BR', data-bs-theme='light')
     
     script(src='/js/bootstrap.bundle.min.js')
     script(src='/js/custom.js')
+    if requireNameCorrection
+      script.
+        document.addEventListener('DOMContentLoaded', function() {
+          var modalElement = document.getElementById('nameCorrectionModal');
+          if (modalElement && window.bootstrap) {
+            new window.bootstrap.Modal(modalElement).show();
+          }
+        });
     block scripts

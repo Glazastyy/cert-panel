@@ -62,7 +62,6 @@ describe('registration service', () => {
       await expect(service.beginRegistration({
         session,
         input: {
-          username: 'ana',
           password: 'senha123',
           confirmPassword: 'senha123',
           fullName: 'Ana Silva',
@@ -101,10 +100,9 @@ describe('registration service', () => {
       const result = await service.beginRegistration({
         session,
         input: {
-          username: 'ana',
           password: 'senha123',
           confirmPassword: 'senha123',
-          fullName: 'Ana Silva',
+          fullName: 'ana silva',
           email: 'ana@example.com'
         }
       });
@@ -113,9 +111,10 @@ describe('registration service', () => {
       expect(sent).toHaveLength(1);
       expect(sent[0]).toEqual({
         to: 'ana@example.com',
-        fullName: 'Ana Silva',
+        fullName: 'ANA SILVA',
         code: 'ABC123'
       });
+      expect(session.pendingRegistration.fullName).toBe('ANA SILVA');
       expect(session.pendingRegistration.passwordHash).not.toBe('senha123');
       expect(session.pendingRegistration.codeHash).toBeString();
       expect(session.pendingRegistration.expiresAt).toBe('2026-08-22T12:15:00.000Z');
@@ -152,11 +151,47 @@ describe('registration service', () => {
       await expect(service.beginRegistration({
         session,
         input: {
-          username: 'ana',
           password: 'senha123',
           confirmPassword: 'senha123',
           fullName: 'Ana Silva',
           email: 'ana@example.invalid'
+        }
+      })).rejects.toThrow(RegistrationInputError);
+
+      expect(session.pendingRegistration).toBeUndefined();
+      expect(await User.count()).toBe(0);
+    } finally {
+      await sequelize.close();
+    }
+  });
+
+  test('requires first and last name during registration', async () => {
+    const sequelize = createSequelize();
+    const User = defineUser(sequelize);
+    const session = {};
+    const service = createRegistrationService({
+      userModel: User,
+      emailValidator: createValidEmailValidator(),
+      emailService: {
+        sendVerificationCode: async () => {
+          throw new Error('unexpected send');
+        }
+      },
+      sessionSecret: 'test-secret',
+      codeGenerator: () => 'ABC123',
+      now: () => new Date('2026-08-22T12:00:00.000Z')
+    });
+
+    try {
+      await sequelize.sync({ force: true });
+
+      await expect(service.beginRegistration({
+        session,
+        input: {
+          password: 'senha123',
+          confirmPassword: 'senha123',
+          fullName: 'Ana',
+          email: 'ana@example.com'
         }
       })).rejects.toThrow(RegistrationInputError);
 
@@ -188,10 +223,9 @@ describe('registration service', () => {
       await service.beginRegistration({
         session,
         input: {
-          username: 'ana',
           password: 'senha123',
           confirmPassword: 'senha123',
-          fullName: 'Ana Silva',
+          fullName: 'ana silva',
           email: 'ana@example.com'
         }
       });
@@ -201,9 +235,10 @@ describe('registration service', () => {
         code: 'ABC123'
       });
 
-      const user = await User.findOne({ where: { username: 'ana' } });
+      const user = await User.findOne({ where: { username: 'ANASILVA' } });
 
-      expect(result.username).toBe('ana');
+      expect(result.username).toBe('ANASILVA');
+      expect(user.fullName).toBe('ANA SILVA');
       expect(user.email).toBe('ana@example.com');
       expect(user.role).toBe('user');
       expect(await user.checkPassword('senha123')).toBe(true);
@@ -234,7 +269,6 @@ describe('registration service', () => {
       await service.beginRegistration({
         session,
         input: {
-          username: 'ana',
           password: 'senha123',
           confirmPassword: 'senha123',
           fullName: 'Ana Silva',
@@ -276,7 +310,6 @@ describe('registration service', () => {
       await service.beginRegistration({
         session,
         input: {
-          username: 'ana',
           password: 'senha123',
           confirmPassword: 'senha123',
           fullName: 'Ana Silva',

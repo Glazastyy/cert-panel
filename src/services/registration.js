@@ -2,6 +2,11 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
 const { EmailValidationError, normalizeEmail } = require('./email-validation');
+const {
+  UserIdentityError,
+  generateUniqueUsername,
+  normalizeFullName
+} = require('./user-identity');
 
 class RegistrationInputError extends Error {
   constructor(message, formData = {}) {
@@ -14,14 +19,6 @@ class RegistrationInputError extends Error {
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
 const REGISTRATION_TTL_MS = 15 * 60 * 1000;
-
-function normalizeUsername(username) {
-  return String(username || '').trim();
-}
-
-function normalizeFullName(fullName) {
-  return String(fullName || '').trim();
-}
 
 function normalizeCode(code) {
   return String(code || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -57,11 +54,21 @@ function safeCompare(left, right) {
 }
 
 function getPublicFormData(input) {
-  return {
-    username: normalizeUsername(input.username),
-    fullName: normalizeFullName(input.fullName),
-    email: normalizeEmail(input.email)
-  };
+  try {
+    return {
+      fullName: normalizeFullName(input.fullName),
+      email: normalizeEmail(input.email)
+    };
+  } catch (error) {
+    if (error instanceof UserIdentityError) {
+      throw new RegistrationInputError(error.message, {
+        fullName: String(input.fullName || '').trim(),
+        email: normalizeEmail(input.email)
+      });
+    }
+
+    throw error;
+  }
 }
 
 function createRegistrationService(options) {
@@ -83,23 +90,12 @@ function createRegistrationService(options) {
     const password = String(input.password || '');
     const confirmPassword = String(input.confirmPassword || '');
 
-    if (!formData.username || !formData.fullName || !formData.email || !password || !confirmPassword) {
+    if (!formData.fullName || !formData.email || !password || !confirmPassword) {
       throw new RegistrationInputError('Preencha todos os campos obrigatórios', formData);
     }
 
     if (password !== confirmPassword) {
       throw new RegistrationInputError('As senhas não coincidem', formData);
-    }
-
-    const existingUser = await userModel.findOne({
-      where: { username: formData.username }
-    });
-
-    if (existingUser) {
-      throw new RegistrationInputError('Nome de usuário já está em uso', {
-        fullName: formData.fullName,
-        email: formData.email
-      });
     }
 
     const existingEmail = await userModel.findOne({
@@ -108,7 +104,6 @@ function createRegistrationService(options) {
 
     if (existingEmail) {
       throw new RegistrationInputError('E-mail já está em uso', {
-        username: formData.username,
         fullName: formData.fullName
       });
     }
@@ -147,7 +142,6 @@ function createRegistrationService(options) {
     });
 
     session.pendingRegistration = {
-      username: formData.username,
       passwordHash,
       fullName: formData.fullName,
       email: verifiedEmail,
@@ -156,7 +150,6 @@ function createRegistrationService(options) {
     };
 
     return {
-      username: formData.username,
       fullName: formData.fullName,
       email: verifiedEmail,
       expiresAt: expiresAt.toISOString()
@@ -181,15 +174,6 @@ function createRegistrationService(options) {
       throw new RegistrationInputError('Código de confirmação inválido');
     }
 
-    const existingUser = await userModel.findOne({
-      where: { username: pendingRegistration.username }
-    });
-
-    if (existingUser) {
-      delete session.pendingRegistration;
-      throw new RegistrationInputError('Nome de usuário já está em uso');
-    }
-
     const existingEmail = await userModel.findOne({
       where: { email: pendingRegistration.email }
     });
@@ -199,8 +183,13 @@ function createRegistrationService(options) {
       throw new RegistrationInputError('E-mail já está em uso');
     }
 
+    const username = await generateUniqueUsername({
+      userModel,
+      fullName: pendingRegistration.fullName
+    });
+
     const user = await userModel.create({
-      username: pendingRegistration.username,
+      username,
       password: pendingRegistration.passwordHash,
       fullName: pendingRegistration.fullName,
       email: pendingRegistration.email,

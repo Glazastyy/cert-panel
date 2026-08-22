@@ -9,10 +9,6 @@ block content
         .card-body
           form(action='/register', method='POST')
             .mb-3
-              label.form-label(for='username') Nome de Usuário
-              input#username.form-control(type='text', name='username', value=username || '', required)
-            
-            .mb-3
               label.form-label(for='fullName') Nome Completo
               input#fullName.form-control(type='text', name='fullName', value=fullName || '', required)
             

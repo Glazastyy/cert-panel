@@ -8,6 +8,11 @@ const {
   RegistrationInputError,
   createRegistrationService
 } = require('../services/registration');
+const {
+  UserIdentityError,
+  normalizeUserIdentity,
+  normalizeUsername
+} = require('../services/user-identity');
 
 function createCurrentRegistrationService() {
   return createRegistrationService({
@@ -16,6 +21,26 @@ function createCurrentRegistrationService() {
     emailService,
     sessionSecret: getRequiredEnv('SESSION_SECRET')
   });
+}
+
+async function applyLoginIdentityUpdate(req, User, user) {
+  try {
+    const identity = await normalizeUserIdentity({ userModel: User, user });
+
+    await user.update({
+      username: identity.username,
+      fullName: identity.fullName,
+      lastLogin: new Date()
+    });
+    delete req.session.requireNameCorrection;
+  } catch (error) {
+    if (!(error instanceof UserIdentityError)) {
+      throw error;
+    }
+
+    req.session.requireNameCorrection = true;
+    await user.update({ lastLogin: new Date() });
+  }
 }
 
 router.get('/login', (req, res) => {
@@ -29,8 +54,13 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const User = sequelize.models.User;
+    const normalizedLoginUsername = normalizeUsername(username);
     
-    const user = await User.findOne({ where: { username } });
+    let user = await User.findOne({ where: { username } });
+
+    if (!user && normalizedLoginUsername) {
+      user = await User.findOne({ where: { username: normalizedLoginUsername } });
+    }
     
     if (!user || !(await user.checkPassword(password))) {
       return res.render('auth/login', {
@@ -48,7 +78,7 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    await user.update({ lastLogin: new Date() });
+    await applyLoginIdentityUpdate(req, User, user);
     await emailService.sendNotification({
       to: user.email,
       subject: 'Novo login no ZeroCert',

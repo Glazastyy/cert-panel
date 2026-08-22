@@ -3,6 +3,11 @@ const router = express.Router();
 const { sequelize } = require('../database/db');
 const { createECPFCertificate, createECNPJCertificate } = require('../services/ca');
 const { buildRecipientUsers, emailService } = require('../services/email');
+const {
+  UserIdentityError,
+  generateUniqueUsername,
+  normalizeFullName
+} = require('../services/user-identity');
 
 // Middleware para verificar se o usuário está autenticado
 const isAuthenticated = (req, res, next) => {
@@ -357,44 +362,34 @@ router.get('/users/add', isAuthenticated, isAdmin, (req, res) => {
 // Rota para processar a adição de um novo usuário (apenas admin)
 router.post('/users/add', isAuthenticated, isAdmin, async (req, res) => {
   try {
-    const { username, password, confirmPassword, fullName, email, role, active } = req.body;
+    const { password, confirmPassword, email, role, active } = req.body;
     const User = sequelize.models.User;
+    const fullName = normalizeFullName(req.body.fullName);
+    const username = await generateUniqueUsername({
+      userModel: User,
+      fullName
+    });
     
-    // Validar os dados
     if (password !== confirmPassword) {
-      return res.render('dashboard/user-form', {
-        title: 'Adicionar Usuário - ZeroCert ICP-Brasil',
-        user: { username, fullName, email, role },
-        isNew: true,
-        error: 'As senhas não coincidem'
-      });
-    }
-    
-    // Verificar se o usuário já existe
-    const existingUser = await User.findOne({ where: { username } });
-    
-    if (existingUser) {
       return res.render('dashboard/user-form', {
         title: 'Adicionar Usuário - ZeroCert ICP-Brasil',
         user: { fullName, email, role },
         isNew: true,
-        error: 'Nome de usuário já está em uso'
+        error: 'As senhas não coincidem'
       });
     }
-    
-    // Verificar se o e-mail já existe
+
     const existingEmail = await User.findOne({ where: { email } });
     
     if (existingEmail) {
       return res.render('dashboard/user-form', {
         title: 'Adicionar Usuário - ZeroCert ICP-Brasil',
-        user: { username, fullName, role },
+        user: { fullName, role },
         isNew: true,
         error: 'E-mail já está em uso'
       });
     }
-    
-    // Criar o usuário
+
     await User.create({
       username,
       password,
@@ -403,8 +398,7 @@ router.post('/users/add', isAuthenticated, isAdmin, async (req, res) => {
       role,
       active: active === 'on'
     });
-    
-    // Redirecionar para a lista de usuários com mensagem de sucesso
+
     req.session.flashMessage = {
       type: 'success',
       text: 'Usuário adicionado com sucesso'
@@ -412,6 +406,15 @@ router.post('/users/add', isAuthenticated, isAdmin, async (req, res) => {
     
     res.redirect('/dashboard/users');
   } catch (error) {
+    if (error instanceof UserIdentityError) {
+      return res.render('dashboard/user-form', {
+        title: 'Adicionar Usuário - ZeroCert ICP-Brasil',
+        user: req.body,
+        isNew: true,
+        error: error.message
+      });
+    }
+
     console.error('Erro ao adicionar usuário:', error);
     res.render('dashboard/user-form', {
       title: 'Adicionar Usuário - ZeroCert ICP-Brasil',
@@ -457,7 +460,7 @@ router.get('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
 // Rota para processar a edição de um usuário (apenas admin)
 router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
   try {
-    const { username, password, confirmPassword, fullName, email, role, active } = req.body;
+    const { password, confirmPassword, email, role, active } = req.body;
     const User = sequelize.models.User;
     
     const user = await User.findByPk(req.params.id);
@@ -469,36 +472,27 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
       };
       return res.redirect('/dashboard/users');
     }
-    
-    // Verificar se o nome de usuário já está em uso por outro usuário
-    if (username !== user.username) {
-      const existingUser = await User.findOne({ where: { username } });
-      
-      if (existingUser) {
-        return res.render('dashboard/user-form', {
-          title: 'Editar Usuário - ZeroCert ICP-Brasil',
-          user: { id: user.id, fullName, email, role, active },
-          isNew: false,
-          error: 'Nome de usuário já está em uso'
-        });
-      }
-    }
-    
-    // Verificar se o e-mail já está em uso por outro usuário
+
+    const fullName = normalizeFullName(req.body.fullName);
+    const username = await generateUniqueUsername({
+      userModel: User,
+      fullName,
+      excludeUserId: user.id
+    });
+
     if (email !== user.email) {
       const existingEmail = await User.findOne({ where: { email } });
       
       if (existingEmail && existingEmail.id !== user.id) {
         return res.render('dashboard/user-form', {
           title: 'Editar Usuário - ZeroCert ICP-Brasil',
-          user: { id: user.id, username, fullName, role, active },
+          user: { id: user.id, username: user.username, fullName, role, active },
           isNew: false,
           error: 'E-mail já está em uso'
         });
       }
     }
-    
-    // Atualizar os dados do usuário
+
     const updateData = {
       username,
       fullName,
@@ -506,13 +500,12 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
       role,
       active: active === 'on'
     };
-    
-    // Atualizar a senha apenas se uma nova senha foi fornecida
+
     if (password) {
       if (password !== confirmPassword) {
         return res.render('dashboard/user-form', {
           title: 'Editar Usuário - ZeroCert ICP-Brasil',
-          user: { id: user.id, username, fullName, email, role, active },
+          user: { id: user.id, username: user.username, fullName, email, role, active },
           isNew: false,
           error: 'As senhas não coincidem'
         });
@@ -522,8 +515,14 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
     }
     
     await user.update(updateData);
-    
-    // Redirecionar para a lista de usuários com mensagem de sucesso
+
+    if (req.session.user && req.session.user.id === user.id) {
+      req.session.user.username = username;
+      req.session.user.fullName = fullName;
+      req.session.user.email = email;
+      req.session.user.role = role;
+    }
+
     req.session.flashMessage = {
       type: 'success',
       text: 'Usuário atualizado com sucesso'
@@ -531,6 +530,15 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
     
     res.redirect('/dashboard/users');
   } catch (error) {
+    if (error instanceof UserIdentityError) {
+      return res.render('dashboard/user-form', {
+        title: 'Editar Usuário - ZeroCert ICP-Brasil',
+        user: { id: req.params.id, ...req.body },
+        isNew: false,
+        error: error.message
+      });
+    }
+
     console.error('Erro ao atualizar usuário:', error);
     res.render('dashboard/user-form', {
       title: 'Editar Usuário - ZeroCert ICP-Brasil',
@@ -646,7 +654,7 @@ router.get('/profile', isAuthenticated, async (req, res) => {
 // Rota para atualizar o perfil do usuário
 router.post('/profile', isAuthenticated, async (req, res) => {
   try {
-    const { fullName, email, currentPassword, newPassword, confirmPassword } = req.body;
+    const { email, currentPassword, newPassword, confirmPassword } = req.body;
     const User = sequelize.models.User;
     
     const user = await User.findByPk(req.session.user.id);
@@ -654,8 +662,14 @@ router.post('/profile', isAuthenticated, async (req, res) => {
     if (!user) {
       return res.redirect('/logout');
     }
-    
-    // Verificar se o e-mail já está em uso por outro usuário
+
+    const fullName = normalizeFullName(req.body.fullName);
+    const username = await generateUniqueUsername({
+      userModel: User,
+      fullName,
+      excludeUserId: user.id
+    });
+
     if (email !== user.email) {
       const existingEmail = await User.findOne({ where: { email } });
       
@@ -667,16 +681,14 @@ router.post('/profile', isAuthenticated, async (req, res) => {
         });
       }
     }
-    
-    // Atualizar os dados do usuário
+
     const updateData = {
+      username,
       fullName,
       email
     };
-    
-    // Atualizar a senha apenas se uma nova senha foi fornecida
+
     if (newPassword) {
-      // Verificar se a senha atual está correta
       if (!(await user.checkPassword(currentPassword))) {
         return res.render('dashboard/profile', {
           title: 'Meu Perfil - ZeroCert ICP-Brasil',
@@ -684,8 +696,7 @@ router.post('/profile', isAuthenticated, async (req, res) => {
           error: 'Senha atual incorreta'
         });
       }
-      
-      // Verificar se a nova senha e a confirmação coincidem
+
       if (newPassword !== confirmPassword) {
         return res.render('dashboard/profile', {
           title: 'Meu Perfil - ZeroCert ICP-Brasil',
@@ -698,8 +709,9 @@ router.post('/profile', isAuthenticated, async (req, res) => {
     }
     
     await user.update(updateData);
-    
-    // Atualizar os dados do usuário na sessão
+
+    delete req.session.requireNameCorrection;
+    req.session.user.username = username;
     req.session.user.fullName = fullName;
     req.session.user.email = email;
     
@@ -709,6 +721,14 @@ router.post('/profile', isAuthenticated, async (req, res) => {
       success: 'Perfil atualizado com sucesso'
     });
   } catch (error) {
+    if (error instanceof UserIdentityError) {
+      return res.render('dashboard/profile', {
+        title: 'Meu Perfil - ZeroCert ICP-Brasil',
+        user: { ...req.session.user, fullName: req.body.fullName, email: req.body.email },
+        error: error.message
+      });
+    }
+
     console.error('Erro ao atualizar perfil:', error);
     res.render('dashboard/profile', {
       title: 'Meu Perfil - ZeroCert ICP-Brasil',

@@ -54,6 +54,7 @@ initializeDatabase().then(({ models }) => {
 
   app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
+    res.locals.requireNameCorrection = Boolean(req.session.requireNameCorrection);
     next();
   });
   

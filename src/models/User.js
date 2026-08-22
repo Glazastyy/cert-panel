@@ -1,4 +1,5 @@
 const { DataTypes } = require('sequelize');
+const { Op } = require('sequelize');
 const bcrypt = require('bcrypt');
 
 module.exports = (sequelize) => {
@@ -56,25 +57,35 @@ module.exports = (sequelize) => {
     timestamps: true
   });
 
-  // Método para verificar senha
   User.prototype.checkPassword = async function(password) {
     return await bcrypt.compare(password, this.password);
   };
 
-  // Método para criar um usuário administrador padrão se não existir
   User.createDefaultAdmin = async function() {
-    const adminExists = await User.findOne({ where: { username: 'admin' } });
+    const normalizedAdmin = await User.findOne({ where: { username: 'ADMINISTRADORDOSISTEMA' } });
     
-    if (!adminExists) {
-      await User.create({
-        username: 'admin',
-        password: 'admin123', // Será criptografado pelo hook beforeCreate
-        fullName: 'Administrador do Sistema',
-        email: 'admin@zerocert.local',
-        role: 'admin'
-      });
-      console.log('Usuário administrador padrão criado');
+    if (normalizedAdmin) {
+      return;
     }
+
+    const legacyAdmin = await User.findOne({ where: { username: { [Op.in]: ['admin'] } } });
+
+    if (legacyAdmin) {
+      await legacyAdmin.update({
+        username: 'ADMINISTRADORDOSISTEMA',
+        fullName: 'ADMINISTRADOR DO SISTEMA'
+      });
+      return;
+    }
+
+    await User.create({
+      username: 'ADMINISTRADORDOSISTEMA',
+      password: 'admin123',
+      fullName: 'ADMINISTRADOR DO SISTEMA',
+      email: 'admin@zerocert.local',
+      role: 'admin'
+    });
+    console.log('Usuário administrador padrão criado');
   };
 
   return User;
