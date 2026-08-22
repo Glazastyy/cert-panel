@@ -8,29 +8,51 @@ class EmailConfigurationError extends Error {
 }
 
 function getEmailConfig(env = process.env) {
+  const provider = String(env.EMAIL_PROVIDER || '').trim().toLowerCase();
   const host = env.SMTP_HOST;
   const port = Number(env.SMTP_PORT || 587);
   const user = env.SMTP_USER;
   const password = env.SMTP_PASSWORD;
   const from = env.EMAIL_FROM;
+  const resendApiKey = env.RESEND_API_KEY;
 
   return {
+    provider,
     host,
     port,
     secure: env.SMTP_SECURE === 'true' || port === 465,
     auth: user && password ? { user, pass: password } : null,
-    from
+    from,
+    resendApiKey
   };
 }
 
-function assertEmailConfigured(config) {
+function resolveEmailProvider(config) {
+  if (config.provider) {
+    return config.provider;
+  }
+
+  if (config.resendApiKey) {
+    return 'resend';
+  }
+
+  return 'smtp';
+}
+
+function assertSmtpConfigured(config) {
   if (!config.host || !config.port || !config.from) {
-    throw new EmailConfigurationError('Configuração SMTP incompleta');
+    throw new EmailConfigurationError('Configuração de e-mail incompleta');
+  }
+}
+
+function assertResendConfigured(config) {
+  if (!config.resendApiKey || !config.from) {
+    throw new EmailConfigurationError('Configuração de e-mail incompleta');
   }
 }
 
 function createTransport(config, dependencies) {
-  assertEmailConfigured(config);
+  assertSmtpConfigured(config);
 
   return dependencies.createTransport({
     host: config.host,
@@ -42,6 +64,16 @@ function createTransport(config, dependencies) {
 
 function normalizeRecipients(recipients) {
   return [...new Set((recipients || []).map((recipient) => String(recipient || '').trim()).filter(Boolean))];
+}
+
+function chunkRecipients(recipients, size) {
+  const chunks = [];
+
+  for (let index = 0; index < recipients.length; index += size) {
+    chunks.push(recipients.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 function buildRecipientList(users, recipientMode, selectedUserIds) {
@@ -57,6 +89,7 @@ function createEmailService(env = process.env, dependencies = {}) {
   const config = getEmailConfig(env);
   const finalDependencies = {
     createTransport: nodemailer.createTransport,
+    fetch: globalThis.fetch,
     logger: console,
     ...dependencies
   };
@@ -76,14 +109,73 @@ function createEmailService(env = process.env, dependencies = {}) {
       throw new Error('Mensagem obrigatória');
     }
 
+    const provider = resolveEmailProvider(config);
+
+    if (provider === 'resend') {
+      return sendWithResend({
+        recipients: normalizedRecipients,
+        subject: String(subject).trim(),
+        message: String(message)
+      });
+    }
+
+    if (provider !== 'smtp') {
+      throw new EmailConfigurationError('Provedor de e-mail inválido');
+    }
+
+    return sendWithSmtp({
+      recipients: normalizedRecipients,
+      subject: String(subject).trim(),
+      message: String(message)
+    });
+  }
+
+  async function sendWithSmtp({ recipients, subject, message }) {
     const transport = createTransport(config, finalDependencies);
 
     return transport.sendMail({
       from: config.from,
-      to: normalizedRecipients,
-      subject: String(subject).trim(),
-      text: String(message)
+      to: recipients,
+      subject,
+      text: message
     });
+  }
+
+  async function sendWithResend({ recipients, subject, message }) {
+    assertResendConfigured(config);
+
+    if (typeof finalDependencies.fetch !== 'function') {
+      throw new EmailConfigurationError('Cliente HTTP indisponível para envio de e-mail');
+    }
+
+    const results = [];
+
+    for (const batch of chunkRecipients(recipients, 50)) {
+      const response = await finalDependencies.fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: config.from,
+          to: batch,
+          subject,
+          text: message
+        })
+      });
+
+      if (!response || !response.ok) {
+        throw new Error('Falha ao enviar e-mail pelo Resend');
+      }
+
+      results.push(await response.json());
+    }
+
+    return {
+      provider: 'resend',
+      results
+    };
   }
 
   return {
@@ -96,7 +188,7 @@ function createEmailService(env = process.env, dependencies = {}) {
         return await send({ recipients: [to], subject, message });
       } catch (error) {
         if (error instanceof EmailConfigurationError) {
-          finalDependencies.logger.warn('Notificação por e-mail ignorada por configuração SMTP incompleta');
+          finalDependencies.logger.warn('Notificação por e-mail ignorada por configuração incompleta');
           return { skipped: true };
         }
 

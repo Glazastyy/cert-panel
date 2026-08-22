@@ -25,6 +25,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
       DB_DIALECT: postgres
       DB_HOST: postgres
       DB_PORT: 5432
@@ -48,6 +49,8 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
     ports:
       - "${APP_HTTP_PORT:-3000}:3000"

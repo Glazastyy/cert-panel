@@ -59,12 +59,14 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
    # DB_USER=zerocert
    # DB_PASSWORD=sua_senha_segura
 
-   # Configurações de E-mail (SMTP)
+   # Configurações de E-mail (SMTP ou Resend)
+   # EMAIL_PROVIDER=smtp
    # SMTP_HOST=smtp.example.com
    # SMTP_PORT=587
    # SMTP_SECURE=false
    # SMTP_USER=usuario_smtp
    # SMTP_PASSWORD=senha_smtp
+   # RESEND_API_KEY=re_xxxxxxxxx
    # EMAIL_FROM=ZeroCert <no-reply@seudominio.com>
    ```
    
@@ -122,7 +124,7 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
    https://localhost:3443
    ```
 
-O `docker-compose.yml` sobe automaticamente o banco, aguarda o healthcheck do PostgreSQL e só então inicia a aplicação web. Para ambiente local, o Compose usa valores padrão, incluindo a senha `local-test`. Em produção, defina ao menos `POSTGRES_PASSWORD`, `DB_PASSWORD`, `APP_HTTP_PORT`, `APP_HTTPS_PORT` e as variáveis SMTP no `.env`.
+O `docker-compose.yml` sobe automaticamente o banco, aguarda o healthcheck do PostgreSQL e só então inicia a aplicação web. Para ambiente local, o Compose usa valores padrão, incluindo a senha `local-test`. Em produção, defina ao menos `POSTGRES_PASSWORD`, `DB_PASSWORD`, `APP_HTTP_PORT`, `APP_HTTPS_PORT`, `EMAIL_PROVIDER`, `EMAIL_FROM` e as variáveis do provedor de e-mail escolhido no `.env`.
 
 Comandos úteis:
 
@@ -207,7 +209,9 @@ O sistema também envia notificações automáticas quando:
 - uma solicitação é rejeitada
 - um usuário faz login
 
-As notificações automáticas não bloqueiam o fluxo do usuário se o SMTP estiver indisponível ou incompleto. Já o envio manual pelo painel exige configuração SMTP válida.
+O envio pode usar SMTP ou Resend. Configure `EMAIL_PROVIDER=smtp` com `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER` e `SMTP_PASSWORD`, ou `EMAIL_PROVIDER=resend` com `RESEND_API_KEY`. Se `EMAIL_PROVIDER` ficar vazio e `RESEND_API_KEY` existir, o sistema usa Resend automaticamente; caso contrário, usa SMTP.
+
+As notificações automáticas não bloqueiam o fluxo do usuário se o provedor de e-mail estiver indisponível ou incompleto. Já o envio manual pelo painel exige configuração de e-mail válida.
 
 ## Segurança
 

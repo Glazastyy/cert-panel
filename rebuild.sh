@@ -145,7 +145,7 @@ ensure_db_password_alignment() {
 has_required_config() {
   local key
 
-  for key in POSTGRES_DB POSTGRES_USER POSTGRES_PORT APP_HTTP_PORT APP_HTTPS_PORT DB_DIALECT DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD SQLITE_DB_PATH; do
+  for key in POSTGRES_DB POSTGRES_USER POSTGRES_PORT APP_HTTP_PORT APP_HTTPS_PORT DB_DIALECT DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD SQLITE_DB_PATH EMAIL_PROVIDER; do
     if [[ -z "$(env_value "$key")" ]]; then
       return 1
     fi
@@ -192,11 +192,13 @@ init_config() {
   prompt_value SSL_DAYS_VALID "Dias de validade SSL" "365"
   prompt_value SSL_DOMAINS "Domínios SSL separados por vírgula" "localhost"
   prompt_value SSL_IPS "IPs SSL separados por vírgula" "127.0.0.1"
+  prompt_value EMAIL_PROVIDER "Provedor de e-mail smtp ou resend" "smtp"
   prompt_value SMTP_HOST "SMTP host vazio para desativar" ""
   prompt_value SMTP_PORT "SMTP porta" "587"
   prompt_value SMTP_SECURE "SMTP seguro true ou false" "false"
   prompt_value SMTP_USER "SMTP usuário vazio se não houver" ""
   prompt_value SMTP_PASSWORD "SMTP senha vazia se não houver" ""
+  prompt_value RESEND_API_KEY "Resend API key vazia se não houver" ""
   prompt_value EMAIL_FROM "Remetente de e-mail" "ZeroCert <no-reply@localhost>"
 
   ASSUME_YES="$previous_assume_yes"

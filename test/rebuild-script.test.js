@@ -55,5 +55,7 @@ describe('rebuild script', () => {
     expect(envContents).toContain('POSTGRES_DB=zerocert');
     expect(envContents).toContain('DB_DIALECT=postgres');
     expect(envContents).toContain('APP_HTTP_PORT=3000');
+    expect(envContents).toContain('EMAIL_PROVIDER=smtp');
+    expect(envContents).toContain('RESEND_API_KEY=');
   });
 });
