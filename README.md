@@ -15,8 +15,7 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 
 ## Requisitos
 
-- Node.js 14.x ou superior
-- NPM 6.x ou superior
+- Bun 1.x ou superior
 - OpenSSL (para geração de certificados SSL)
 
 ## Instalação
@@ -29,7 +28,7 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 
 2. Instale as dependências:
    ```
-   npm install
+   bun install
    ```
 
 3. Configure as variáveis de ambiente:
@@ -58,7 +57,7 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 
 4. Inicie o servidor:
    ```
-   npm start
+   bun run start
    ```
 
 5. Acesse a aplicação em seu navegador:
