@@ -53,26 +53,35 @@ describe('rebuild script', () => {
     expect(envContents).toContain('POSTGRES_PASSWORD=');
     expect(envContents).toContain('DB_PASSWORD=');
     expect(envContents).toContain('POSTGRES_DB=zerocert');
+    expect(envContents).not.toContain('POSTGRES_PORT=');
     expect(envContents).toContain('DB_DIALECT=postgres');
     expect(envContents).toContain('APP_HTTP_PORT=3000');
     expect(envContents).toContain('EMAIL_PROVIDER=smtp');
     expect(envContents).toContain('RESEND_API_KEY=');
   });
 
-  test('passes an explicit SQLite path to the migration command', () => {
+  test('does not publish PostgreSQL on the host network', () => {
+    const compose = fs.readFileSync(path.join(__dirname, '..', 'docker-compose.yml'), 'utf8');
+
+    expect(compose).not.toContain('${POSTGRES_PORT');
+    expect(compose).not.toContain('5432:5432');
+    expect(compose).toContain('DB_HOST: postgres');
+  });
+
+  test('runs migrations inside Docker Compose with the SQLite file mounted read-only', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cert-panel-rebuild-migrate-'));
     const envFile = path.join(tempDir, '.env');
     const binDir = path.join(tempDir, 'bin');
-    const captureFile = path.join(tempDir, 'migration-env.txt');
+    const captureFile = path.join(tempDir, 'docker-commands.txt');
     const sqlitePath = path.join(tempDir, 'database.sqlite');
 
     fs.mkdirSync(binDir);
     fs.writeFileSync(sqlitePath, '');
-    fs.writeFileSync(path.join(binDir, 'bun'), [
+    fs.writeFileSync(path.join(binDir, 'docker'), [
       '#!/usr/bin/env bash',
-      'printf "SQLITE_DB_PATH=%s\\nMIGRATION_ALLOW_NON_EMPTY=%s\\nPOSTGRES_DB=%s\\nPOSTGRES_USER=%s\\nPOSTGRES_PASSWORD=%s\\n" "$SQLITE_DB_PATH" "$MIGRATION_ALLOW_NON_EMPTY" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" > "$CAPTURE_FILE"'
+      'printf "%s\\n" "$*" >> "$CAPTURE_FILE"'
     ].join('\n'));
-    fs.chmodSync(path.join(binDir, 'bun'), 0o755);
+    fs.chmodSync(path.join(binDir, 'docker'), 0o755);
 
     const result = spawnSync('bash', [scriptPath, 'migrate', sqlitePath, '--yes'], {
       cwd: path.join(__dirname, '..'),
@@ -85,13 +94,15 @@ describe('rebuild script', () => {
     });
 
     expect(result.status).toBe(0);
-    const capturedEnv = fs.readFileSync(captureFile, 'utf8');
+    const capturedCommands = fs.readFileSync(captureFile, 'utf8');
 
-    expect(capturedEnv).toContain(`SQLITE_DB_PATH=${sqlitePath}`);
-    expect(capturedEnv).toContain('MIGRATION_ALLOW_NON_EMPTY=false');
-    expect(capturedEnv).toContain('POSTGRES_DB=zerocert');
-    expect(capturedEnv).toContain('POSTGRES_USER=zerocert');
-    expect(capturedEnv).toContain('POSTGRES_PASSWORD=');
+    expect(capturedCommands).toContain('compose --env-file');
+    expect(capturedCommands).toContain('up -d --build postgres');
+    expect(capturedCommands).toContain(`-v ${sqlitePath}:/tmp/zerocert-legacy.sqlite:ro`);
+    expect(capturedCommands).toContain('-e SQLITE_DB_PATH=/tmp/zerocert-legacy.sqlite');
+    expect(capturedCommands).toContain('-e DB_HOST=postgres');
+    expect(capturedCommands).toContain('-e DB_PORT=5432');
+    expect(capturedCommands).toContain('web bun run db:migrate:sqlite-to-postgres');
   });
 
   test('allows explicit non-empty migration mode', () => {
@@ -103,11 +114,11 @@ describe('rebuild script', () => {
 
     fs.mkdirSync(binDir);
     fs.writeFileSync(sqlitePath, '');
-    fs.writeFileSync(path.join(binDir, 'bun'), [
+    fs.writeFileSync(path.join(binDir, 'docker'), [
       '#!/usr/bin/env bash',
-      'printf "%s" "$MIGRATION_ALLOW_NON_EMPTY" > "$CAPTURE_FILE"'
+      'printf "%s\\n" "$*" >> "$CAPTURE_FILE"'
     ].join('\n'));
-    fs.chmodSync(path.join(binDir, 'bun'), 0o755);
+    fs.chmodSync(path.join(binDir, 'docker'), 0o755);
 
     const result = spawnSync('bash', [scriptPath, 'migrate', sqlitePath, '--merge', '--yes'], {
       cwd: path.join(__dirname, '..'),
@@ -120,6 +131,6 @@ describe('rebuild script', () => {
     });
 
     expect(result.status).toBe(0);
-    expect(fs.readFileSync(captureFile, 'utf8')).toBe('true');
+    expect(fs.readFileSync(captureFile, 'utf8')).toContain('-e MIGRATION_ALLOW_NON_EMPTY=true');
   });
 });

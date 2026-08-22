@@ -168,7 +168,7 @@ Antes da migração, pare a aplicação em produção para evitar novas escritas
 
 3. Execute a migração:
    ```
-   SQLITE_DB_PATH=src/data/database.sqlite DB_DIALECT=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=zerocert DB_USER=zerocert DB_PASSWORD=sua_senha_segura bun run db:migrate:sqlite-to-postgres
+   ./rebuild.sh migrate /caminho/para/database.sqlite
    ```
 
 4. Verifique o resumo impresso pelo script e só então inicie a aplicação apontando para Postgres.

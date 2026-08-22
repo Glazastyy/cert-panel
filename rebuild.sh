@@ -178,7 +178,7 @@ ensure_db_password_alignment() {
 has_required_config() {
   local key
 
-  for key in POSTGRES_DB POSTGRES_USER POSTGRES_PORT APP_HTTP_PORT APP_HTTPS_PORT DB_DIALECT DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD SQLITE_DB_PATH EMAIL_PROVIDER; do
+  for key in POSTGRES_DB POSTGRES_USER APP_HTTP_PORT APP_HTTPS_PORT DB_DIALECT DB_HOST DB_PORT DB_NAME DB_USER DB_PASSWORD SQLITE_DB_PATH EMAIL_PROVIDER; do
     if [[ -z "$(env_value "$key")" ]]; then
       return 1
     fi
@@ -206,12 +206,11 @@ init_config() {
 
   prompt_value POSTGRES_DB "Nome do banco PostgreSQL" "zerocert"
   prompt_value POSTGRES_USER "Usuário PostgreSQL" "zerocert"
-  prompt_value POSTGRES_PORT "Porta PostgreSQL no host" "5432"
   prompt_value APP_HTTP_PORT "Porta HTTP da aplicação" "3000"
   prompt_value APP_HTTPS_PORT "Porta HTTPS da aplicação" "3443"
   prompt_value DB_DIALECT "Dialeto do banco para execução fora do Compose" "postgres"
   prompt_value DB_HOST "Host do banco para execução fora do Compose" "localhost"
-  prompt_value DB_PORT "Porta do banco para execução fora do Compose" "$(env_value POSTGRES_PORT || true)"
+  prompt_value DB_PORT "Porta do banco para execução fora do Compose" "5432"
   prompt_value DB_NAME "Nome do banco para execução fora do Compose" "$(env_value POSTGRES_DB || true)"
   prompt_value DB_USER "Usuário do banco para execução fora do Compose" "$(env_value POSTGRES_USER || true)"
   ensure_db_password_alignment
@@ -284,9 +283,10 @@ run_update() {
 }
 
 run_migration() {
-  require_command bun
+  require_command docker
   init_config false
   local sqlite_path
+  local sqlite_absolute_path
 
   sqlite_path="${MIGRATION_SQLITE_PATH:-$(env_value SQLITE_DB_PATH)}"
 
@@ -300,18 +300,20 @@ run_migration() {
     exit 1
   fi
 
-  SQLITE_DB_PATH="$sqlite_path" \
-  MIGRATION_ALLOW_NON_EMPTY="$MIGRATION_ALLOW_NON_EMPTY" \
-  POSTGRES_DB="$(env_value POSTGRES_DB)" \
-  POSTGRES_USER="$(env_value POSTGRES_USER)" \
-  POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)" \
-  DB_DIALECT=postgres \
-  DB_HOST=127.0.0.1 \
-  DB_PORT="$(env_value POSTGRES_PORT)" \
-  DB_NAME="$(env_value POSTGRES_DB)" \
-  DB_USER="$(env_value POSTGRES_USER)" \
-  DB_PASSWORD="$(env_value POSTGRES_PASSWORD)" \
-  bun run db:migrate:sqlite-to-postgres
+  sqlite_absolute_path="$(cd "$(dirname "$sqlite_path")" && pwd)/$(basename "$sqlite_path")"
+
+  compose up -d --build postgres
+  compose run --rm -T \
+    -v "${sqlite_absolute_path}:/tmp/zerocert-legacy.sqlite:ro" \
+    -e SQLITE_DB_PATH=/tmp/zerocert-legacy.sqlite \
+    -e MIGRATION_ALLOW_NON_EMPTY="$MIGRATION_ALLOW_NON_EMPTY" \
+    -e DB_DIALECT=postgres \
+    -e DB_HOST=postgres \
+    -e DB_PORT=5432 \
+    -e DB_NAME="$(env_value POSTGRES_DB)" \
+    -e DB_USER="$(env_value POSTGRES_USER)" \
+    -e DB_PASSWORD="$(env_value POSTGRES_PASSWORD)" \
+    web bun run db:migrate:sqlite-to-postgres
 }
 
 choose_command
