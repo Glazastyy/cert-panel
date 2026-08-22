@@ -15,8 +15,8 @@ const {
 const {
   UserIdentityError,
   normalizeUserIdentity,
-  normalizeUsername
 } = require('../services/user-identity');
+const { findLoginUser } = require('../services/login');
 
 function createCurrentRegistrationService() {
   return createRegistrationService({
@@ -70,18 +70,12 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const User = sequelize.models.User;
-    const normalizedLoginUsername = normalizeUsername(username);
-    
-    let user = await User.findOne({ where: { username } });
-
-    if (!user && normalizedLoginUsername) {
-      user = await User.findOne({ where: { username: normalizedLoginUsername } });
-    }
+    const user = await findLoginUser({ userModel: User, login: username });
     
     if (!user || !(await user.checkPassword(password))) {
       return res.render('auth/login', {
         title: 'Login - ZeroCert ICP-Brasil',
-        error: 'Nome de usuário ou senha inválidos',
+        error: 'E-mail, usuário ou senha inválidos',
         username
       });
     }
