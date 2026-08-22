@@ -34,6 +34,10 @@ function createPostgresTarget(env = process.env) {
   });
 }
 
+function envFlag(value) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
+}
+
 async function assertTargetCanReceiveData(targetSequelize, models, options) {
   if (targetSequelize.getDialect() !== 'postgres' && options.requirePostgresTarget) {
     throw new Error('O banco de destino deve ser PostgreSQL');
@@ -141,7 +145,9 @@ async function main() {
   const targetSequelize = createPostgresTarget();
 
   try {
-    const summary = await migrateSqliteToPostgres(sourceSequelize, targetSequelize);
+    const summary = await migrateSqliteToPostgres(sourceSequelize, targetSequelize, {
+      requireEmptyTarget: !envFlag(process.env.MIGRATION_ALLOW_NON_EMPTY)
+    });
     console.log('Migração concluída com sucesso');
     for (const [tableName, count] of Object.entries(summary)) {
       console.log(`${tableName}: ${count}`);

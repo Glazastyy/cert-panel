@@ -5,11 +5,15 @@ ENV_FILE="${ENV_FILE:-.env}"
 COMMAND="${1:-menu}"
 ASSUME_YES="${ASSUME_YES:-false}"
 MIGRATION_SQLITE_PATH=""
+MIGRATION_ALLOW_NON_EMPTY="false"
 
 for argument in "${@:2}"; do
   case "$argument" in
     --yes)
       ASSUME_YES="true"
+      ;;
+    --merge|--allow-non-empty)
+      MIGRATION_ALLOW_NON_EMPTY="true"
       ;;
     *)
       if [[ "$COMMAND" == "migrate" && -z "$MIGRATION_SQLITE_PATH" ]]; then
@@ -34,7 +38,7 @@ fi
 
 if [[ "$COMMAND" == "migrate" && -z "$MIGRATION_SQLITE_PATH" ]]; then
   for argument in "${@:2}"; do
-    if [[ "$argument" != "--yes" ]]; then
+    if [[ "$argument" != "--yes" && "$argument" != "--merge" && "$argument" != "--allow-non-empty" ]]; then
       MIGRATION_SQLITE_PATH="$argument"
       break
     fi
@@ -42,7 +46,7 @@ if [[ "$COMMAND" == "migrate" && -z "$MIGRATION_SQLITE_PATH" ]]; then
 fi
 
 print_usage() {
-  printf '%s\n' "Uso: ./rebuild.sh [init|config|up|update|reboot|status|logs|down|migrate] [caminho-sqlite] [--yes]"
+  printf '%s\n' "Uso: ./rebuild.sh [init|config|up|update|reboot|status|logs|down|migrate] [caminho-sqlite] [--merge] [--yes]"
 }
 
 require_command() {
@@ -297,6 +301,7 @@ run_migration() {
   fi
 
   SQLITE_DB_PATH="$sqlite_path" \
+  MIGRATION_ALLOW_NON_EMPTY="$MIGRATION_ALLOW_NON_EMPTY" \
   POSTGRES_DB="$(env_value POSTGRES_DB)" \
   POSTGRES_USER="$(env_value POSTGRES_USER)" \
   POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)" \

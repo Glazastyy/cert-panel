@@ -70,7 +70,7 @@ describe('rebuild script', () => {
     fs.writeFileSync(sqlitePath, '');
     fs.writeFileSync(path.join(binDir, 'bun'), [
       '#!/usr/bin/env bash',
-      'printf "SQLITE_DB_PATH=%s\\nPOSTGRES_DB=%s\\nPOSTGRES_USER=%s\\nPOSTGRES_PASSWORD=%s\\n" "$SQLITE_DB_PATH" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" > "$CAPTURE_FILE"'
+      'printf "SQLITE_DB_PATH=%s\\nMIGRATION_ALLOW_NON_EMPTY=%s\\nPOSTGRES_DB=%s\\nPOSTGRES_USER=%s\\nPOSTGRES_PASSWORD=%s\\n" "$SQLITE_DB_PATH" "$MIGRATION_ALLOW_NON_EMPTY" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" > "$CAPTURE_FILE"'
     ].join('\n'));
     fs.chmodSync(path.join(binDir, 'bun'), 0o755);
 
@@ -88,8 +88,38 @@ describe('rebuild script', () => {
     const capturedEnv = fs.readFileSync(captureFile, 'utf8');
 
     expect(capturedEnv).toContain(`SQLITE_DB_PATH=${sqlitePath}`);
+    expect(capturedEnv).toContain('MIGRATION_ALLOW_NON_EMPTY=false');
     expect(capturedEnv).toContain('POSTGRES_DB=zerocert');
     expect(capturedEnv).toContain('POSTGRES_USER=zerocert');
     expect(capturedEnv).toContain('POSTGRES_PASSWORD=');
+  });
+
+  test('allows explicit non-empty migration mode', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cert-panel-rebuild-merge-'));
+    const envFile = path.join(tempDir, '.env');
+    const binDir = path.join(tempDir, 'bin');
+    const captureFile = path.join(tempDir, 'migration-env.txt');
+    const sqlitePath = path.join(tempDir, 'database.sqlite');
+
+    fs.mkdirSync(binDir);
+    fs.writeFileSync(sqlitePath, '');
+    fs.writeFileSync(path.join(binDir, 'bun'), [
+      '#!/usr/bin/env bash',
+      'printf "%s" "$MIGRATION_ALLOW_NON_EMPTY" > "$CAPTURE_FILE"'
+    ].join('\n'));
+    fs.chmodSync(path.join(binDir, 'bun'), 0o755);
+
+    const result = spawnSync('bash', [scriptPath, 'migrate', sqlitePath, '--merge', '--yes'], {
+      cwd: path.join(__dirname, '..'),
+      env: {
+        CAPTURE_FILE: captureFile,
+        ENV_FILE: envFile,
+        PATH: `${binDir}:${process.env.PATH}`
+      },
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(fs.readFileSync(captureFile, 'utf8')).toBe('true');
   });
 });

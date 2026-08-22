@@ -150,4 +150,60 @@ describe('SQLite to PostgreSQL migration', () => {
       await target.close();
     }
   });
+
+  test('merges into a non-empty target when explicitly allowed', async () => {
+    const source = createMemoryDatabase();
+    const target = createMemoryDatabase();
+    const sourceModels = registerModels(source);
+    const targetModels = registerModels(target);
+
+    try {
+      await source.sync({ force: true });
+      await target.sync({ force: true });
+
+      await sourceModels.User.create({
+        id: 5,
+        username: 'importado',
+        password: 'senha-importada',
+        fullName: 'Nome Importado',
+        email: 'importado@example.com',
+        role: 'user'
+      });
+
+      await targetModels.User.create({
+        id: 5,
+        username: 'antigo',
+        password: 'senha-antiga',
+        fullName: 'Nome Antigo',
+        email: 'antigo@example.com',
+        role: 'operator'
+      });
+
+      await targetModels.User.create({
+        id: 99,
+        username: 'mantido',
+        password: 'senha-mantida',
+        fullName: 'Nome Mantido',
+        email: 'mantido@example.com',
+        role: 'admin'
+      });
+
+      const summary = await migrateSqliteToPostgres(source, target, {
+        requireEmptyTarget: false,
+        requirePostgresTarget: false
+      });
+
+      const mergedUser = await targetModels.User.findByPk(5);
+      const retainedUser = await targetModels.User.findByPk(99);
+
+      expect(summary.Users).toBe(1);
+      expect(await targetModels.User.count()).toBe(2);
+      expect(mergedUser.username).toBe('importado');
+      expect(mergedUser.fullName).toBe('Nome Importado');
+      expect(retainedUser.username).toBe('mantido');
+    } finally {
+      await source.close();
+      await target.close();
+    }
+  });
 });
