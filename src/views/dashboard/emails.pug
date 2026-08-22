@@ -32,8 +32,48 @@ block content
           input#subject.form-control(type='text', name='subject', value=formData ? formData.subject : '', maxlength='160', required)
 
         .mb-3
+          label.form-label Formato
+          .form-check.form-check-inline
+            input#messageFormatText.form-check-input(type='radio', name='messageFormat', value='text', checked=!formData || formData.messageFormat !== 'html')
+            label.form-check-label(for='messageFormatText') Texto simples
+          .form-check.form-check-inline
+            input#messageFormatHtml.form-check-input(type='radio', name='messageFormat', value='html', checked=formData && formData.messageFormat === 'html')
+            label.form-check-label(for='messageFormatHtml') HTML
+
+        .mb-3
           label.form-label(for='message') Mensagem
           textarea#message.form-control(name='message', rows='8', maxlength='5000', required)= formData ? formData.message : ''
+
+        .mb-3
+          .card.border-secondary
+            .card-header
+              h6.mb-0 Variáveis disponíveis
+            .card-body
+              .row.g-2
+                .col-md-6
+                  code {{user.fullName}}
+                  br
+                  code {{user.firstName}}
+                  br
+                  code {{user.username}}
+                  br
+                  code {{user.email}}
+                  br
+                  code {{user.id}}
+                .col-md-6
+                  code {{date.today}}
+                  br
+                  code {{date.now}}
+                  br
+                  code {{urls.base}}
+                  br
+                  code {{urls.login}}
+                  br
+                  code {{urls.dashboard}}
+                  br
+                  code {{urls.certificates}}
+                  br
+                  code {{urls.certificateRequests}}
 
         .d-flex.justify-content-end
           button.btn.btn-primary(type='submit')

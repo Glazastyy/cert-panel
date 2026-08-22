@@ -77,12 +77,81 @@ function chunkRecipients(recipients, size) {
 }
 
 function buildRecipientList(users, recipientMode, selectedUserIds) {
+  return buildRecipientUsers(users, recipientMode, selectedUserIds).map((user) => user.email);
+}
+
+function buildRecipientUsers(users, recipientMode, selectedUserIds) {
   const selectedIds = new Set((selectedUserIds || []).map(String));
 
-  return normalizeRecipients(users
+  const seenEmails = new Set();
+
+  return (users || [])
     .filter((user) => user.active !== false)
     .filter((user) => recipientMode === 'all' || selectedIds.has(String(user.id)))
-    .map((user) => user.email));
+    .filter((user) => {
+      const email = String(user.email || '').trim().toLowerCase();
+
+      if (!email || seenEmails.has(email)) {
+        return false;
+      }
+
+      seenEmails.add(email);
+      return true;
+    });
+}
+
+function normalizeBaseUrl(baseUrl) {
+  return String(baseUrl || '').trim().replace(/\/+$/, '');
+}
+
+function formatDate(date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo'
+  }).format(date);
+}
+
+function formatDateTime(date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(date);
+}
+
+function firstName(fullName) {
+  return String(fullName || '').trim().split(/\s+/)[0] || '';
+}
+
+function buildTemplateVariables({ user, baseUrl, now }) {
+  const currentDate = now instanceof Date ? now : new Date(now || Date.now());
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+
+  return {
+    'user.id': String(user.id || ''),
+    'user.username': String(user.username || ''),
+    'user.fullName': String(user.fullName || ''),
+    'user.firstName': firstName(user.fullName),
+    'user.email': String(user.email || ''),
+    'date.today': formatDate(currentDate),
+    'date.now': formatDateTime(currentDate),
+    'urls.base': normalizedBaseUrl,
+    'urls.login': `${normalizedBaseUrl}/login`,
+    'urls.dashboard': `${normalizedBaseUrl}/dashboard`,
+    'urls.certificates': `${normalizedBaseUrl}/dashboard/certificates`,
+    'urls.certificateRequests': `${normalizedBaseUrl}/dashboard/certificate-requests`
+  };
+}
+
+function renderEmailTemplate(template, context) {
+  const variables = buildTemplateVariables(context);
+
+  return String(template || '').replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (match, key) => {
+    if (!Object.prototype.hasOwnProperty.call(variables, key)) {
+      throw new Error(`Variável de e-mail inválida: ${key}`);
+    }
+
+    return variables[key];
+  });
 }
 
 function createEmailService(env = process.env, dependencies = {}) {
@@ -94,8 +163,9 @@ function createEmailService(env = process.env, dependencies = {}) {
     ...dependencies
   };
 
-  async function send({ recipients, subject, message }) {
+  async function send({ recipients, subject, message, messageFormat = 'text' }) {
     const normalizedRecipients = normalizeRecipients(recipients);
+    const normalizedFormat = normalizeMessageFormat(messageFormat);
 
     if (normalizedRecipients.length === 0) {
       throw new Error('Nenhum destinatário válido informado');
@@ -115,7 +185,8 @@ function createEmailService(env = process.env, dependencies = {}) {
       return sendWithResend({
         recipients: normalizedRecipients,
         subject: String(subject).trim(),
-        message: String(message)
+        message: String(message),
+        messageFormat: normalizedFormat
       });
     }
 
@@ -126,22 +197,50 @@ function createEmailService(env = process.env, dependencies = {}) {
     return sendWithSmtp({
       recipients: normalizedRecipients,
       subject: String(subject).trim(),
-      message: String(message)
+      message: String(message),
+      messageFormat: normalizedFormat
     });
   }
 
-  async function sendWithSmtp({ recipients, subject, message }) {
+  function normalizeMessageFormat(messageFormat) {
+    const normalizedFormat = String(messageFormat || 'text').trim().toLowerCase();
+
+    if (!['text', 'html'].includes(normalizedFormat)) {
+      throw new Error('Formato de e-mail inválido');
+    }
+
+    return normalizedFormat;
+  }
+
+  function buildProviderPayload({ from, recipients, subject, message, messageFormat }) {
+    const payload = {
+      from,
+      to: recipients,
+      subject
+    };
+
+    if (messageFormat === 'html') {
+      payload.html = message;
+    } else {
+      payload.text = message;
+    }
+
+    return payload;
+  }
+
+  async function sendWithSmtp({ recipients, subject, message, messageFormat }) {
     const transport = createTransport(config, finalDependencies);
 
-    return transport.sendMail({
+    return transport.sendMail(buildProviderPayload({
       from: config.from,
-      to: recipients,
+      recipients,
       subject,
-      text: message
-    });
+      message,
+      messageFormat
+    }));
   }
 
-  async function sendWithResend({ recipients, subject, message }) {
+  async function sendWithResend({ recipients, subject, message, messageFormat }) {
     assertResendConfigured(config);
 
     if (typeof finalDependencies.fetch !== 'function') {
@@ -161,7 +260,7 @@ function createEmailService(env = process.env, dependencies = {}) {
           from: config.from,
           to: batch,
           subject,
-          text: message
+          [messageFormat]: message
         })
       });
 
@@ -178,9 +277,51 @@ function createEmailService(env = process.env, dependencies = {}) {
     };
   }
 
+  async function sendPersonalizedManualMessage({ recipientUsers, subject, message, messageFormat, baseUrl, now }) {
+    const users = recipientUsers || [];
+
+    if (users.length === 0) {
+      throw new Error('Nenhum destinatário válido informado');
+    }
+
+    const results = [];
+
+    for (const user of users) {
+      const context = {
+        user,
+        baseUrl,
+        now
+      };
+
+      results.push(await send({
+        recipients: [user.email],
+        subject: renderEmailTemplate(subject, context),
+        message: renderEmailTemplate(message, context),
+        messageFormat
+      }));
+    }
+
+    return {
+      personalized: true,
+      count: results.length,
+      results
+    };
+  }
+
   return {
-    async sendManualMessage({ recipients, subject, message }) {
-      return send({ recipients, subject, message });
+    async sendManualMessage({ recipients, recipientUsers, subject, message, messageFormat, baseUrl, now = new Date() }) {
+      if (recipientUsers) {
+        return sendPersonalizedManualMessage({
+          recipientUsers,
+          subject,
+          message,
+          messageFormat,
+          baseUrl,
+          now
+        });
+      }
+
+      return send({ recipients, subject, message, messageFormat });
     },
 
     async sendNotification({ to, subject, message }) {
@@ -212,6 +353,8 @@ const emailService = createEmailService();
 module.exports = {
   EmailConfigurationError,
   buildRecipientList,
+  buildRecipientUsers,
   createEmailService,
-  emailService
+  emailService,
+  renderEmailTemplate
 };

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../database/db');
 const { createECPFCertificate, createECNPJCertificate } = require('../services/ca');
-const { buildRecipientList, emailService } = require('../services/email');
+const { buildRecipientUsers, emailService } = require('../services/email');
 
 // Middleware para verificar se o usuário está autenticado
 const isAuthenticated = (req, res, next) => {
@@ -168,18 +168,21 @@ router.post('/emails', isAuthenticated, isAdmin, async (req, res) => {
 
   try {
     const selectedUserIds = Array.isArray(req.body.userIds) ? req.body.userIds : req.body.userIds ? [req.body.userIds] : [];
-    const recipients = buildRecipientList(users, req.body.recipientMode, selectedUserIds);
+    const recipientUsers = buildRecipientUsers(users, req.body.recipientMode, selectedUserIds);
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     await emailService.sendManualMessage({
-      recipients,
+      recipientUsers,
       subject: req.body.subject,
-      message: req.body.message
+      message: req.body.message,
+      messageFormat: req.body.messageFormat,
+      baseUrl
     });
 
     res.render('dashboard/emails', {
       title: 'Enviar E-mail - ZeroCert ICP-Brasil',
       users,
-      success: `E-mail enviado para ${recipients.length} destinatário(s).`
+      success: `E-mail enviado para ${recipientUsers.length} destinatário(s).`
     });
   } catch (error) {
     res.render('dashboard/emails', {

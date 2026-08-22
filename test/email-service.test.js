@@ -3,7 +3,9 @@ const { describe, expect, test } = require('bun:test');
 const {
   createEmailService,
   EmailConfigurationError,
-  buildRecipientList
+  buildRecipientList,
+  buildRecipientUsers,
+  renderEmailTemplate
 } = require('../src/services/email');
 
 describe('email service', () => {
@@ -17,6 +19,44 @@ describe('email service', () => {
 
     expect(buildRecipientList(users, 'all', [])).toEqual(['ana@example.com', 'bruno@example.com']);
     expect(buildRecipientList(users, 'selected', ['2', '4'])).toEqual(['bruno@example.com']);
+  });
+
+  test('selects active recipient users for personalized messages', () => {
+    const users = [
+      { id: 1, email: 'ana@example.com', active: true },
+      { id: 2, email: 'bruno@example.com', active: true },
+      { id: 3, email: 'inactive@example.com', active: false }
+    ];
+
+    expect(buildRecipientUsers(users, 'selected', ['2', '3']).map((user) => user.email)).toEqual(['bruno@example.com']);
+  });
+
+  test('renders global and user variables in e-mail templates', () => {
+    const rendered = renderEmailTemplate('Olá {{user.fullName}}, acesse {{urls.dashboard}} em {{date.today}}.', {
+      user: {
+        id: 7,
+        username: 'ana',
+        fullName: 'Ana Silva',
+        email: 'ana@example.com'
+      },
+      baseUrl: 'https://test-pcert.zerocert.com.br',
+      now: new Date('2026-08-22T12:00:00.000Z')
+    });
+
+    expect(rendered).toBe('Olá Ana Silva, acesse https://test-pcert.zerocert.com.br/dashboard em 22/08/2026.');
+  });
+
+  test('rejects unknown e-mail template variables', () => {
+    expect(() => renderEmailTemplate('Olá {{user.password}}', {
+      user: {
+        id: 7,
+        username: 'ana',
+        fullName: 'Ana Silva',
+        email: 'ana@example.com'
+      },
+      baseUrl: 'https://test-pcert.zerocert.com.br',
+      now: new Date('2026-08-22T12:00:00.000Z')
+    })).toThrow('Variável de e-mail inválida');
   });
 
   test('throws a configuration error for manual messages without email provider settings', async () => {
@@ -61,6 +101,71 @@ describe('email service', () => {
     expect(sent[0].from).toBe('ZeroCert <no-reply@example.com>');
     expect(sent[0].subject).toBe('Aviso');
     expect(sent[0].text).toContain('Mensagem');
+  });
+
+  test('sends personalized manual messages as plain text', async () => {
+    const sent = [];
+    const service = createEmailService({
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      EMAIL_FROM: 'ZeroCert <no-reply@example.com>'
+    }, {
+      createTransport: () => ({
+        sendMail: async (payload) => {
+          sent.push(payload);
+          return { messageId: `message-${sent.length}` };
+        }
+      })
+    });
+
+    await service.sendManualMessage({
+      recipientUsers: [
+        { id: 1, username: 'ana', fullName: 'Ana Silva', email: 'ana@example.com' },
+        { id: 2, username: 'bruno', fullName: 'Bruno Dias', email: 'bruno@example.com' }
+      ],
+      subject: 'Olá {{user.firstName}}',
+      message: 'Painel: {{urls.dashboard}}',
+      messageFormat: 'text',
+      baseUrl: 'https://test-pcert.zerocert.com.br',
+      now: new Date('2026-08-22T12:00:00.000Z')
+    });
+
+    expect(sent).toHaveLength(2);
+    expect(sent[0].to).toEqual(['ana@example.com']);
+    expect(sent[0].subject).toBe('Olá Ana');
+    expect(sent[0].text).toBe('Painel: https://test-pcert.zerocert.com.br/dashboard');
+    expect(sent[0].html).toBeUndefined();
+    expect(sent[1].subject).toBe('Olá Bruno');
+  });
+
+  test('sends personalized manual messages as HTML', async () => {
+    const sent = [];
+    const service = createEmailService({
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      EMAIL_FROM: 'ZeroCert <no-reply@example.com>'
+    }, {
+      createTransport: () => ({
+        sendMail: async (payload) => {
+          sent.push(payload);
+          return { messageId: 'message-1' };
+        }
+      })
+    });
+
+    await service.sendManualMessage({
+      recipientUsers: [
+        { id: 1, username: 'ana', fullName: 'Ana Silva', email: 'ana@example.com' }
+      ],
+      subject: 'Atualização',
+      message: '<p>Olá {{user.fullName}}</p><a href="{{urls.login}}">Login</a>',
+      messageFormat: 'html',
+      baseUrl: 'https://test-pcert.zerocert.com.br',
+      now: new Date('2026-08-22T12:00:00.000Z')
+    });
+
+    expect(sent[0].html).toBe('<p>Olá Ana Silva</p><a href="https://test-pcert.zerocert.com.br/login">Login</a>');
+    expect(sent[0].text).toBeUndefined();
   });
 
   test('sends registration confirmation codes through the configured provider', async () => {
