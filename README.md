@@ -104,14 +104,22 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 
 ## PostgreSQL em Container
 
-1. Crie um arquivo `.env` com base em `.env.postgres.example` e troque `POSTGRES_PASSWORD` e `DB_PASSWORD` por uma senha forte.
+1. Crie um arquivo `.env` com base em `.env.postgres.example` e troque `POSTGRES_PASSWORD` e `DB_PASSWORD` por uma senha forte em produção.
 
-2. Suba o Postgres:
+2. Suba o Postgres e a aplicação web:
    ```
-   bun run db:postgres:up
+   bun run compose:up
    ```
 
-3. Configure a aplicação para usar Postgres:
+3. Acesse a aplicação:
+   ```
+   http://localhost:3000
+   https://localhost:3443
+   ```
+
+O `docker-compose.yml` sobe automaticamente o banco, aguarda o healthcheck do PostgreSQL e só então inicia a aplicação web. Para ambiente local, o Compose usa valores padrão, incluindo a senha `local-test`. Em produção, defina ao menos `POSTGRES_PASSWORD`, `DB_PASSWORD`, `APP_HTTP_PORT`, `APP_HTTPS_PORT` e as variáveis SMTP no `.env`.
+
+Se precisar rodar a aplicação fora do Compose, configure:
    ```
    DB_DIALECT=postgres
    DB_HOST=localhost

@@ -7,6 +7,8 @@
     "start": "bun src/index.js",
     "dev": "bun --watch src/index.js",
     "test": "bun test",
+    "compose:up": "docker compose up -d --build",
+    "compose:down": "docker compose down",
     "db:postgres:up": "docker compose up -d postgres",
     "db:migrate:sqlite-to-postgres": "bun scripts/migrate-sqlite-to-postgres.js"
   },

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-zerocert}
       POSTGRES_USER: ${POSTGRES_USER:-zerocert}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-test}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -15,6 +15,43 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  web:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DB_DIALECT: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-zerocert}
+      DB_USER: ${POSTGRES_USER:-zerocert}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-local-test}
+      HTTP_PORT: 3000
+      HTTPS_PORT: 3443
+      SSL_DIRECTORY: src/ssl
+      SSL_COMMON_NAME: ${SSL_COMMON_NAME:-localhost}
+      SSL_ORGANIZATION: ${SSL_ORGANIZATION:-ZeroCert}
+      SSL_ORGANIZATIONAL_UNIT: ${SSL_ORGANIZATIONAL_UNIT:-Dev}
+      SSL_COUNTRY: ${SSL_COUNTRY:-BR}
+      SSL_STATE: ${SSL_STATE:-DF}
+      SSL_LOCALITY: ${SSL_LOCALITY:-Brasilia}
+      SSL_DAYS_VALID: ${SSL_DAYS_VALID:-365}
+      SSL_DOMAINS: ${SSL_DOMAINS:-localhost}
+      SSL_IPS: ${SSL_IPS:-127.0.0.1}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+    ports:
+      - "${APP_HTTP_PORT:-3000}:3000"
+      - "${APP_HTTPS_PORT:-3443}:3443"
 
 volumes:
   zerocert_postgres_data:

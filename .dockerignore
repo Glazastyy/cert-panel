@@ -1,0 +1,7 @@
+.git
+.env
+node_modules
+src/data/*.sqlite
+src/data/*.sqlite.backup
+src/ssl
+*.log

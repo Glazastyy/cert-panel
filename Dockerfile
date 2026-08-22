@@ -1,14 +1,18 @@
-FROM node:20
+FROM oven/bun:1.3.14
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --omit=dev
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_ENV=production
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
 
 COPY . .
 
-RUN npm install pm2 -g
+EXPOSE 3000 3443
 
-EXPOSE 6723
-
-CMD ["pm2-runtime", "ecosystem.config.js"]
+CMD ["bun", "src/index.js"]
