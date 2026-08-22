@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../database/db');
 const { createECPFCertificate, createECNPJCertificate, revokeCertificate } = require('../services/ca');
+const { formatCertificateUsage } = require('../services/certificate-formatting');
 const { emailService } = require('../services/email');
 const fs = require('fs');
 const path = require('path');
@@ -342,7 +343,8 @@ router.get('/view/:id', isAuthenticated, async (req, res) => {
       title: `Certificado ${certificate.type} - ZeroCert ICP-Brasil`,
       certificate,
       ca: certificate.CertificateAuthority,
-      user: certificate.User
+      user: certificate.User,
+      formatCertificateUsage
     });
   } catch (error) {
     console.error('Erro ao visualizar certificado:', error);
@@ -579,7 +581,8 @@ router.post('/validate', async (req, res) => {
       title: 'Resultado da Validação - ZeroCert ICP-Brasil',
       certificate,
       status,
-      message
+      message,
+      formatCertificateUsage
     });
   } catch (error) {
     console.error('Erro ao validar certificado:', error);

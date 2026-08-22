@@ -2,6 +2,7 @@ const { describe, expect, test } = require('bun:test');
 const fs = require('fs');
 const path = require('path');
 const pug = require('pug');
+const { formatCertificateUsage } = require('../src/services/certificate-formatting');
 
 const viewsPath = path.join(__dirname, '..', 'src', 'views');
 
@@ -66,6 +67,51 @@ describe('dashboard views', () => {
     expect(resetHtml).toContain('name="token"');
     expect(resetHtml).toContain('name="password"');
     expect(resetHtml).toContain('name="confirmPassword"');
+  });
+
+  test('formats certificate usage objects in certificate detail views', () => {
+    const certificate = {
+      id: 1,
+      type: 'e-CPF',
+      serialNumber: 'abc123',
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      validTo: new Date('2027-01-01T00:00:00Z'),
+      revoked: false,
+      subject: {
+        name: 'ANA SILVA',
+        cpf: '12345678901',
+        birthDate: '1990-01-01',
+        socialSecurity: '12345678900'
+      },
+      policyOid: '2.16.76.1.2.1.7',
+      dpcUrl: 'https://zerocert.example/dpc.pdf',
+      keyUsage: {
+        digitalSignature: true,
+        nonRepudiation: true
+      },
+      extendedKeyUsage: {
+        clientAuth: true,
+        emailProtection: true
+      }
+    };
+    const html = renderView('certificates/view.pug', {
+      title: 'Certificado',
+      user: {
+        username: 'ANSIL4',
+        fullName: 'ANA SILVA',
+        email: 'ana@example.com',
+        role: 'user'
+      },
+      ca: {
+        name: 'AC ZeroCert Intermediária'
+      },
+      certificate,
+      formatCertificateUsage
+    });
+
+    expect(html).not.toContain('[object Object]');
+    expect(html).toContain('Digital Signature, Non Repudiation');
+    expect(html).toContain('Client Auth, Email Protection');
   });
 
   test('ship persisted dark mode assets', () => {

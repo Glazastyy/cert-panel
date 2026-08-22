@@ -106,11 +106,11 @@ block content
                 .col-md-6
                   .mb-3
                     label.fw-bold Key Usage:
-                    p #{certificate.keyUsage}
+                    p #{formatCertificateUsage(certificate.keyUsage)}
                   
                   .mb-3
                     label.fw-bold Extended Key Usage:
-                    p #{certificate.extendedKeyUsage}
+                    p #{formatCertificateUsage(certificate.extendedKeyUsage)}
           
           .row.mb-4
             .col-md-12

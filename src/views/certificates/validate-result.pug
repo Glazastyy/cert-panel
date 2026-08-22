@@ -125,12 +125,12 @@ block content
                   if certificate.keyUsage
                     .mb-3
                       label.fw-bold Key Usage:
-                      p #{certificate.keyUsage}
+                      p #{formatCertificateUsage(certificate.keyUsage)}
                   
                   if certificate.extendedKeyUsage
                     .mb-3
                       label.fw-bold Extended Key Usage:
-                      p #{certificate.extendedKeyUsage}
+                      p #{formatCertificateUsage(certificate.extendedKeyUsage)}
           
           .row
             .col-md-12
