@@ -344,6 +344,14 @@ function createEmailService(env = process.env, dependencies = {}) {
         subject: 'Confirme seu cadastro no ZeroCert',
         message: `Olá, ${fullName}.\n\nSeu código de confirmação do ZeroCert é: ${code}\n\nEle expira em 15 minutos.`
       });
+    },
+
+    async sendPasswordResetLink({ to, fullName, resetUrl }) {
+      return send({
+        recipients: [to],
+        subject: 'Redefinição de senha no ZeroCert',
+        message: `Olá, ${fullName}.\n\nRecebemos uma solicitação para redefinir sua senha no ZeroCert.\n\nAcesse o link abaixo para criar uma nova senha:\n${resetUrl}\n\nEste link expira em 1 hora. Se você não solicitou esta alteração, ignore esta mensagem.`
+      });
     }
   };
 }

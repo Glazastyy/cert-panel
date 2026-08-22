@@ -195,6 +195,33 @@ describe('email service', () => {
     expect(sent[0].text).toContain('ABC123');
   });
 
+  test('sends password reset links through the configured provider', async () => {
+    const sent = [];
+    const service = createEmailService({
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      EMAIL_FROM: 'ZeroCert <no-reply@example.com>'
+    }, {
+      createTransport: () => ({
+        sendMail: async (payload) => {
+          sent.push(payload);
+          return { messageId: 'message-1' };
+        }
+      })
+    });
+
+    await service.sendPasswordResetLink({
+      to: 'ana@example.com',
+      fullName: 'ANA SILVA',
+      resetUrl: 'https://test-pcert.zerocert.com.br/password/reset?token=abc'
+    });
+
+    expect(sent[0].to).toEqual(['ana@example.com']);
+    expect(sent[0].subject).toBe('Redefinição de senha no ZeroCert');
+    expect(sent[0].text).toContain('ANA SILVA');
+    expect(sent[0].text).toContain('https://test-pcert.zerocert.com.br/password/reset?token=abc');
+  });
+
   test('sends manual messages with configured Resend API', async () => {
     const requests = [];
     const service = createEmailService({

@@ -37,6 +37,7 @@ function registerModels(targetSequelize) {
   const CertificateRequest = require('../models/CertificateRequest')(targetSequelize);
   const Session = require('../models/Session')(targetSequelize);
   const EmailDelivery = require('../models/EmailDelivery')(targetSequelize);
+  const PasswordResetToken = require('../models/PasswordResetToken')(targetSequelize);
 
   User.hasMany(Certificate, { foreignKey: 'userId' });
   Certificate.belongsTo(User, { foreignKey: 'userId' });
@@ -51,7 +52,10 @@ function registerModels(targetSequelize) {
   Certificate.hasOne(CertificateRequest, { foreignKey: 'certificateId' });
   CertificateRequest.belongsTo(Certificate, { foreignKey: 'certificateId' });
 
-  return { User, Certificate, CertificateAuthority, CertificateRequest, Session, EmailDelivery };
+  User.hasMany(PasswordResetToken, { foreignKey: 'userId' });
+  PasswordResetToken.belongsTo(User, { foreignKey: 'userId' });
+
+  return { User, Certificate, CertificateAuthority, CertificateRequest, Session, EmailDelivery, PasswordResetToken };
 }
 
 async function initializeDatabase() {

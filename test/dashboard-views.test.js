@@ -44,6 +44,30 @@ describe('dashboard views', () => {
     expect(html).toContain('bi-moon-stars');
   });
 
+  test('show password reset links and forms', () => {
+    const loginHtml = renderView('auth/login.pug', {
+      title: 'Login',
+      user: null
+    });
+    const forgotHtml = renderView('auth/forgot-password.pug', {
+      title: 'Redefinir Senha',
+      user: null
+    });
+    const resetHtml = renderView('auth/reset-password.pug', {
+      title: 'Nova Senha',
+      user: null,
+      token: 'token'
+    });
+
+    expect(loginHtml).toContain('/password/forgot');
+    expect(forgotHtml).toContain('action="/password/forgot"');
+    expect(forgotHtml).toContain('name="email"');
+    expect(resetHtml).toContain('action="/password/reset"');
+    expect(resetHtml).toContain('name="token"');
+    expect(resetHtml).toContain('name="password"');
+    expect(resetHtml).toContain('name="confirmPassword"');
+  });
+
   test('ship persisted dark mode assets', () => {
     const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'custom.css'), 'utf8');
     const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'custom.js'), 'utf8');

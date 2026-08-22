@@ -9,6 +9,10 @@ const {
   createRegistrationService
 } = require('../services/registration');
 const {
+  PasswordResetError,
+  createPasswordResetService
+} = require('../services/password-reset');
+const {
   UserIdentityError,
   normalizeUserIdentity,
   normalizeUsername
@@ -21,6 +25,18 @@ function createCurrentRegistrationService() {
     emailService,
     sessionSecret: getRequiredEnv('SESSION_SECRET')
   });
+}
+
+function createCurrentPasswordResetService() {
+  return createPasswordResetService({
+    userModel: sequelize.models.User,
+    resetTokenModel: sequelize.models.PasswordResetToken,
+    emailService
+  });
+}
+
+function requestBaseUrl(req) {
+  return `${req.protocol}://${req.get('host')}`;
 }
 
 async function applyLoginIdentityUpdate(req, User, user) {
@@ -109,6 +125,93 @@ router.get('/register', (req, res) => {
     return res.redirect('/dashboard');
   }
   res.render('auth/register', { title: 'Registro - ZeroCert ICP-Brasil' });
+});
+
+router.get('/password/forgot', (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/dashboard');
+  }
+
+  res.render('auth/forgot-password', {
+    title: 'Redefinir Senha - ZeroCert ICP-Brasil'
+  });
+});
+
+router.post('/password/forgot', async (req, res) => {
+  try {
+    const passwordResetService = createCurrentPasswordResetService();
+
+    await passwordResetService.requestPasswordReset({
+      email: req.body.email,
+      baseUrl: requestBaseUrl(req)
+    });
+
+    res.render('auth/forgot-password', {
+      title: 'Redefinir Senha - ZeroCert ICP-Brasil',
+      success: 'Se o e-mail estiver cadastrado, enviaremos um link para redefinir a senha.',
+      email: req.body.email
+    });
+  } catch (error) {
+    console.error('Erro ao solicitar redefinição de senha:', error);
+    res.render('auth/forgot-password', {
+      title: 'Redefinir Senha - ZeroCert ICP-Brasil',
+      error: 'Ocorreu um erro ao processar a solicitação. Tente novamente mais tarde.',
+      email: req.body.email
+    });
+  }
+});
+
+router.get('/password/reset', async (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/dashboard');
+  }
+
+  try {
+    const passwordResetService = createCurrentPasswordResetService();
+    await passwordResetService.findValidToken(req.query.token);
+
+    res.render('auth/reset-password', {
+      title: 'Nova Senha - ZeroCert ICP-Brasil',
+      token: req.query.token
+    });
+  } catch (error) {
+    res.render('auth/forgot-password', {
+      title: 'Redefinir Senha - ZeroCert ICP-Brasil',
+      error: 'Link de redefinição inválido ou expirado.'
+    });
+  }
+});
+
+router.post('/password/reset', async (req, res) => {
+  try {
+    const passwordResetService = createCurrentPasswordResetService();
+
+    await passwordResetService.resetPassword({
+      token: req.body.token,
+      password: req.body.password,
+      confirmPassword: req.body.confirmPassword
+    });
+
+    res.render('auth/login', {
+      title: 'Login - ZeroCert ICP-Brasil',
+      success: 'Senha redefinida com sucesso. Faça login para continuar.'
+    });
+  } catch (error) {
+    if (error instanceof PasswordResetError) {
+      return res.render('auth/reset-password', {
+        title: 'Nova Senha - ZeroCert ICP-Brasil',
+        error: error.message,
+        token: req.body.token
+      });
+    }
+
+    console.error('Erro ao redefinir senha:', error);
+    res.render('auth/reset-password', {
+      title: 'Nova Senha - ZeroCert ICP-Brasil',
+      error: 'Ocorreu um erro ao redefinir a senha. Tente novamente mais tarde.',
+      token: req.body.token
+    });
+  }
 });
 
 router.post('/register', async (req, res) => {
