@@ -286,6 +286,14 @@ a:hover {
   color: #ff8794 !important;
 }
 
+[data-bs-theme="dark"] .bg-light {
+  background-color: var(--surface-elevated-color) !important;
+}
+
+[data-bs-theme="dark"] .text-black {
+  color: var(--text-color) !important;
+}
+
 .alert {
   border-radius: 6px;
   border: 1px solid var(--border-color);
