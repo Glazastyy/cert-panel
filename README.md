@@ -136,9 +136,10 @@ Comandos úteis:
 ./rebuild.sh logs
 ./rebuild.sh down
 ./rebuild.sh migrate
+./rebuild.sh migrate /caminho/para/database.sqlite
 ```
 
-Use `config` para revisar configurações, `update` para executar `git pull --ff-only` e rebuild, `reboot` para reconstruir e reiniciar a web, `status` para ver os containers, `logs` para acompanhar logs em tempo real, `down` para parar os containers e `migrate` para migrar o SQLite legado para PostgreSQL.
+Use `config` para revisar configurações, `update` para executar `git pull --ff-only` e rebuild, `reboot` para reconstruir e reiniciar a web, `status` para ver os containers, `logs` para acompanhar logs em tempo real, `down` para parar os containers e `migrate` para migrar o SQLite legado para PostgreSQL. O comando `migrate` usa `SQLITE_DB_PATH` do `.env` quando nenhum caminho é informado, ou o arquivo passado no argumento quando chamado como `./rebuild.sh migrate /caminho/para/database.sqlite`.
 
 Se precisar rodar a aplicação fora do Compose, configure:
    ```

@@ -18,6 +18,7 @@ const certificateRoutes = require('./routes/certificates');
 const app = express();
 const HTTP_PORT = process.env.HTTP_PORT || 3000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 6723;
+const APP_HOST = process.env.APP_HOST || '0.0.0.0';
 const sessionSecret = getRequiredEnv('SESSION_SECRET');
 
 // Configuração do mecanismo de visualização
@@ -150,13 +151,13 @@ initializeDatabase().then(() => {
       };
       
       // Inicialização do servidor HTTP e HTTPS
-      app.listen(HTTP_PORT, () => {
+      app.listen(HTTP_PORT, APP_HOST, () => {
         console.log(`Servidor HTTP rodando na porta ${HTTP_PORT}`);
         console.log(`Acesse: http://localhost:${HTTP_PORT}`);
       });
       
       // Iniciar servidor HTTPS
-      https.createServer(httpsOptions, app).listen(HTTPS_PORT, () => {
+      https.createServer(httpsOptions, app).listen(HTTPS_PORT, APP_HOST, () => {
         console.log(`Servidor HTTPS rodando na porta ${HTTPS_PORT}`);
         console.log(`Acesse: https://localhost:${HTTPS_PORT}`);
       });
@@ -164,7 +165,7 @@ initializeDatabase().then(() => {
       console.error('Falha ao configurar HTTPS:', error);
       
       // Iniciar apenas o servidor HTTP em caso de falha no HTTPS
-      app.listen(HTTP_PORT, () => {
+      app.listen(HTTP_PORT, APP_HOST, () => {
         console.log(`Servidor HTTP rodando na porta ${HTTP_PORT} (HTTPS falhou)`);
         console.log(`Acesse: http://localhost:${HTTP_PORT}`);
       });

@@ -49,7 +49,12 @@ describe('dashboard views', () => {
     const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'custom.js'), 'utf8');
 
     expect(css).toContain('[data-bs-theme="dark"]');
-    expect(css).toContain('--background-color');
+    expect(css).toContain('--background-color: #0f1419');
+    expect(css).toContain('--surface-elevated-color: #1f2933');
+    expect(css).toContain('--bs-body-bg: var(--background-color)');
+    expect(css).toContain('[data-bs-theme="dark"] .table');
+    expect(css).toContain('[data-bs-theme="dark"] .btn-outline-primary');
+    expect(css).toContain('[data-bs-theme="dark"] .form-control');
     expect(js).toContain('zerocert-theme');
     expect(js).toContain('localStorage');
     expect(js).toContain('data-bs-theme');

@@ -4,16 +4,45 @@ set -Eeuo pipefail
 ENV_FILE="${ENV_FILE:-.env}"
 COMMAND="${1:-menu}"
 ASSUME_YES="${ASSUME_YES:-false}"
+MIGRATION_SQLITE_PATH=""
 
-if [[ "${2:-}" == "--yes" || "${1:-}" == "--yes" ]]; then
+for argument in "${@:2}"; do
+  case "$argument" in
+    --yes)
+      ASSUME_YES="true"
+      ;;
+    *)
+      if [[ "$COMMAND" == "migrate" && -z "$MIGRATION_SQLITE_PATH" ]]; then
+        MIGRATION_SQLITE_PATH="$argument"
+      fi
+      ;;
+  esac
+done
+
+if [[ "${1:-}" == "--yes" ]]; then
   ASSUME_YES="true"
-  if [[ "${1:-}" == "--yes" ]]; then
-    COMMAND="up"
-  fi
+  COMMAND="up"
+fi
+
+if [[ "${2:-}" == "--yes" ]]; then
+  ASSUME_YES="true"
+fi
+
+if [[ "$COMMAND" == "migrate" && "${2:-}" == "--yes" && -n "${3:-}" ]]; then
+  MIGRATION_SQLITE_PATH="$3"
+fi
+
+if [[ "$COMMAND" == "migrate" && -z "$MIGRATION_SQLITE_PATH" ]]; then
+  for argument in "${@:2}"; do
+    if [[ "$argument" != "--yes" ]]; then
+      MIGRATION_SQLITE_PATH="$argument"
+      break
+    fi
+  done
 fi
 
 print_usage() {
-  printf '%s\n' "Uso: ./rebuild.sh [init|config|up|update|reboot|status|logs|down|migrate] [--yes]"
+  printf '%s\n' "Uso: ./rebuild.sh [init|config|up|update|reboot|status|logs|down|migrate] [caminho-sqlite] [--yes]"
 }
 
 require_command() {
@@ -253,7 +282,24 @@ run_update() {
 run_migration() {
   require_command bun
   init_config false
-  SQLITE_DB_PATH="$(env_value SQLITE_DB_PATH)" \
+  local sqlite_path
+
+  sqlite_path="${MIGRATION_SQLITE_PATH:-$(env_value SQLITE_DB_PATH)}"
+
+  if [[ -z "$sqlite_path" ]]; then
+    printf '%s\n' "Informe o caminho do SQLite legado." >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$sqlite_path" ]]; then
+    printf 'Arquivo SQLite não encontrado: %s\n' "$sqlite_path" >&2
+    exit 1
+  fi
+
+  SQLITE_DB_PATH="$sqlite_path" \
+  POSTGRES_DB="$(env_value POSTGRES_DB)" \
+  POSTGRES_USER="$(env_value POSTGRES_USER)" \
+  POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)" \
   DB_DIALECT=postgres \
   DB_HOST=127.0.0.1 \
   DB_PORT="$(env_value POSTGRES_PORT)" \

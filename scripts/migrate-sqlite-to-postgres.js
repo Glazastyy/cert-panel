@@ -61,6 +61,12 @@ async function resetPostgresSequence(sequelize, tableName) {
   );
 }
 
+async function sourceTableExists(sequelize, tableName) {
+  const inspector = sequelize.getQueryInterface();
+
+  return inspector.tableExists(tableName);
+}
+
 function parseJsonValue(value) {
   if (typeof value !== 'string') {
     return value;
@@ -83,6 +89,12 @@ function normalizeRecord(modelName, record) {
 }
 
 async function copyModel(modelName, sourceModel, targetModel, transaction) {
+  const tableName = tableNames[modelName];
+
+  if (!await sourceTableExists(sourceModel.sequelize, tableName)) {
+    return 0;
+  }
+
   const records = await sourceModel.findAll({
     order: [['id', 'ASC']],
     raw: true

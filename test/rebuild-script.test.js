@@ -58,4 +58,38 @@ describe('rebuild script', () => {
     expect(envContents).toContain('EMAIL_PROVIDER=smtp');
     expect(envContents).toContain('RESEND_API_KEY=');
   });
+
+  test('passes an explicit SQLite path to the migration command', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cert-panel-rebuild-migrate-'));
+    const envFile = path.join(tempDir, '.env');
+    const binDir = path.join(tempDir, 'bin');
+    const captureFile = path.join(tempDir, 'migration-env.txt');
+    const sqlitePath = path.join(tempDir, 'database.sqlite');
+
+    fs.mkdirSync(binDir);
+    fs.writeFileSync(sqlitePath, '');
+    fs.writeFileSync(path.join(binDir, 'bun'), [
+      '#!/usr/bin/env bash',
+      'printf "SQLITE_DB_PATH=%s\\nPOSTGRES_DB=%s\\nPOSTGRES_USER=%s\\nPOSTGRES_PASSWORD=%s\\n" "$SQLITE_DB_PATH" "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" > "$CAPTURE_FILE"'
+    ].join('\n'));
+    fs.chmodSync(path.join(binDir, 'bun'), 0o755);
+
+    const result = spawnSync('bash', [scriptPath, 'migrate', sqlitePath, '--yes'], {
+      cwd: path.join(__dirname, '..'),
+      env: {
+        CAPTURE_FILE: captureFile,
+        ENV_FILE: envFile,
+        PATH: `${binDir}:${process.env.PATH}`
+      },
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    const capturedEnv = fs.readFileSync(captureFile, 'utf8');
+
+    expect(capturedEnv).toContain(`SQLITE_DB_PATH=${sqlitePath}`);
+    expect(capturedEnv).toContain('POSTGRES_DB=zerocert');
+    expect(capturedEnv).toContain('POSTGRES_USER=zerocert');
+    expect(capturedEnv).toContain('POSTGRES_PASSWORD=');
+  });
 });

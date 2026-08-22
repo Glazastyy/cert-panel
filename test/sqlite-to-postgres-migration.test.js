@@ -113,4 +113,41 @@ describe('SQLite to PostgreSQL migration', () => {
       await target.close();
     }
   });
+
+  test('treats missing legacy source tables as empty tables', async () => {
+    const source = createMemoryDatabase();
+    const target = createMemoryDatabase();
+    const sourceModels = registerModels(source);
+    const targetModels = registerModels(target);
+
+    try {
+      await sourceModels.User.sync({ force: true });
+      await sourceModels.CertificateAuthority.sync({ force: true });
+      await sourceModels.Certificate.sync({ force: true });
+      await target.sync({ force: true });
+
+      await sourceModels.User.create({
+        id: 3,
+        username: 'legado',
+        password: 'senha-segura',
+        fullName: 'Usuário Legado',
+        email: 'legado@example.com',
+        role: 'user'
+      });
+
+      const summary = await migrateSqliteToPostgres(source, target, {
+        requirePostgresTarget: false
+      });
+
+      expect(summary.Users).toBe(1);
+      expect(summary.CertificateAuthorities).toBe(0);
+      expect(summary.Certificates).toBe(0);
+      expect(summary.CertificateRequests).toBe(0);
+      expect(await targetModels.User.count()).toBe(1);
+      expect(await targetModels.CertificateRequest.count()).toBe(0);
+    } finally {
+      await source.close();
+      await target.close();
+    }
+  });
 });
