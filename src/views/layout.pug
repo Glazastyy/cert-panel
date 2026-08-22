@@ -4,11 +4,22 @@ html(lang='pt-BR', data-bs-theme='light')
     meta(charset='utf-8')
     meta(name='viewport', content='width=device-width, initial-scale=1')
     title= title || 'ZeroCert - Simulador ICP-Brasil'
+    script.
+      (function() {
+        try {
+          var storedTheme = localStorage.getItem('zerocert-theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = storedTheme || (prefersDark ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-bs-theme', theme === 'dark' ? 'dark' : 'light');
+        } catch (error) {
+          document.documentElement.setAttribute('data-bs-theme', 'light');
+        }
+      })();
     link(rel='stylesheet', href='/css/bootstrap.min.css')
     link(rel='stylesheet', href='/css/bootstrap-icons.min.css')
     link(rel='stylesheet', href='/css/custom.css')
     block styles
-  body
+  body.app-body
     nav.navbar.navbar-expand-lg.navbar-dark.bg-primary.mb-4
       .container
         a.navbar-brand(href='/')
@@ -71,7 +82,7 @@ html(lang='pt-BR', data-bs-theme='light')
               li.nav-item
                 a.nav-link(href='/register') Registro
     
-    main.container.mb-5
+    main.app-main.container.mb-5
       if error
         .alert.alert-danger.alert-dismissible.fade.show
           button.btn-close(type='button', data-bs-dismiss='alert')

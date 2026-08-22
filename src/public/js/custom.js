@@ -2,8 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const themeStorageKey = 'zerocert-theme';
   const themeToggle = document.getElementById('themeToggle');
   const themeIcon = themeToggle ? themeToggle.querySelector('i') : null;
-  const storedTheme = localStorage.getItem(themeStorageKey);
-  const preferredTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
   function applyTheme(theme) {
     const normalizedTheme = theme === 'dark' ? 'dark' : 'light';
@@ -20,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  applyTheme(storedTheme || preferredTheme);
+  applyTheme(document.documentElement.getAttribute('data-bs-theme'));
 
   if (themeToggle) {
     themeToggle.addEventListener('click', function() {

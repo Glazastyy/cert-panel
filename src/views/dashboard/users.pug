@@ -11,12 +11,12 @@ block content
     .card-header.bg-primary.text-white
       h5.mb-0 Lista de Usuários
     
-    .table-responsive
-      table.table.table-hover.mb-0
+    .table-responsive.table-frame
+      table.table.table-hover.mb-0.data-table.users-table
         thead
           tr
-            th Nome de Usuário
-            th Nome Completo
+            th Usuário
+            th Nome
             th E-mail
             th Papel
             th Status
@@ -26,10 +26,10 @@ block content
           if users && users.length > 0
             each user in users
               tr
-                td #{user.username}
-                td #{user.fullName}
-                td #{user.email}
-                td
+                td.text-strong #{user.username}
+                td.entity-cell #{user.fullName}
+                td.email-cell #{user.email}
+                td.status-cell
                   case user.role
                     when 'admin'
                       span.badge.bg-danger Administrador
@@ -37,18 +37,18 @@ block content
                       span.badge.bg-warning.text-dark Operador
                     default
                       span.badge.bg-info Usuário
-                td
+                td.status-cell
                   if user.active
                     span.badge.bg-success Ativo
                   else
                     span.badge.bg-secondary Inativo
-                td #{user.lastLogin ? user.lastLogin.toLocaleString('pt-BR') : 'Nunca'}
-                td
-                  .btn-group
-                    a.btn.btn-sm.btn-primary(href=`/dashboard/users/edit/${user.id}`, title='Editar')
+                td.date-cell #{user.lastLogin ? user.lastLogin.toLocaleString('pt-BR') : 'Nunca'}
+                td.action-cell
+                  .table-actions
+                    a.btn.btn-sm.btn-primary.action-btn(href=`/dashboard/users/edit/${user.id}`, title='Editar')
                       i.bi.bi-pencil.me-1
                       | Editar
-                    button.btn.btn-sm.btn-danger(type='button', data-bs-toggle='modal', data-bs-target='#deleteUserModal', data-user-id=user.id, data-user-name=user.fullName, title='Excluir')
+                    button.btn.btn-sm.btn-danger.action-btn(type='button', data-bs-toggle='modal', data-bs-target='#deleteUserModal', data-user-id=user.id, data-user-name=user.fullName, title='Excluir')
                       i.bi.bi-trash.me-1
                       | Excluir
           else

@@ -24,12 +24,12 @@ block content
     .card-header.bg-primary.text-white
       h5.mb-0 Lista de Certificados
     
-    .table-responsive
-      table.table.table-hover.mb-0
+    .table-responsive.table-frame
+      table.table.table-hover.mb-0.data-table.certificates-table
         thead
           tr
             th Tipo
-            th Número de Série
+            th Série
             th Titular
             th Emitido em
             th Validade
@@ -40,30 +40,30 @@ block content
           if certificates && certificates.length > 0
             each cert in certificates
               tr
-                td #{cert.type}
-                td #{cert.serialNumber.substring(0, 8)}...
-                td
+                td.type-cell #{cert.type}
+                td.serial-cell #{cert.serialNumber.substring(0, 8)}...
+                td.entity-cell
                   if cert.type === 'e-CPF'
-                    | #{cert.subject.name}
+                    span.entity-name #{cert.subject.name}
                     br
                     small.text-muted CPF: #{cert.subject.cpf}
                   else
-                    | #{cert.subject.companyName}
+                    span.entity-name #{cert.subject.companyName}
                     br
                     small.text-muted CNPJ: #{cert.subject.cnpj}
-                td #{cert.createdAt.toLocaleDateString('pt-BR')}
-                td #{cert.validTo.toLocaleDateString('pt-BR')}
-                td
+                td.date-cell #{cert.createdAt.toLocaleDateString('pt-BR')}
+                td.date-cell #{cert.validTo.toLocaleDateString('pt-BR')}
+                td.status-cell
                   if cert.revoked
                     span.badge.bg-danger Revogado
                   else if new Date() > cert.validTo
                     span.badge.bg-warning.text-dark Expirado
                   else
                     span.badge.bg-success Válido
-                td #{cert.User.fullName}
-                td
-                  .btn-group
-                    a.btn.btn-sm.btn-primary(href=`/certificates/view/${cert.id}`, title='Visualizar')
+                td.entity-cell #{cert.User.fullName}
+                td.action-cell
+                  .table-actions
+                    a.btn.btn-sm.btn-primary.action-btn(href=`/certificates/view/${cert.id}`, title='Visualizar')
                       i.bi.bi-eye.me-1
                       | Visualizar
           else
