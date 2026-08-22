@@ -7,6 +7,7 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 const { initializeDatabase } = require('./database/db');
 const { initializeCA } = require('./services/ca');
+const { getRequiredEnv } = require('./config/security');
 
 // Importação das rotas
 const authRoutes = require('./routes/auth');
@@ -17,6 +18,7 @@ const certificateRoutes = require('./routes/certificates');
 const app = express();
 const HTTP_PORT = process.env.HTTP_PORT || 3000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 6723;
+const sessionSecret = getRequiredEnv('SESSION_SECRET');
 
 // Configuração do mecanismo de visualização
 app.set('view engine', 'pug');
@@ -29,7 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuração da sessão
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'zerocert-icp-brasil-secret-key',
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: true,
   cookie: { 
