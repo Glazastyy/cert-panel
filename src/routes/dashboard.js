@@ -3,6 +3,7 @@ const router = express.Router();
 const { sequelize } = require('../database/db');
 const { createECPFCertificate, createECNPJCertificate } = require('../services/ca');
 const { buildRecipientUsers, emailService } = require('../services/email');
+const { createEmailQueueService } = require('../services/email-queue');
 const {
   UserIdentityError,
   generateUniqueUsername,
@@ -175,8 +176,12 @@ router.post('/emails', isAuthenticated, isAdmin, async (req, res) => {
     const selectedUserIds = Array.isArray(req.body.userIds) ? req.body.userIds : req.body.userIds ? [req.body.userIds] : [];
     const recipientUsers = buildRecipientUsers(users, req.body.recipientMode, selectedUserIds);
     const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const emailQueue = createEmailQueueService({
+      deliveryModel: sequelize.models.EmailDelivery,
+      emailService
+    });
 
-    await emailService.sendManualMessage({
+    const result = await emailQueue.enqueueManualMessage({
       recipientUsers,
       subject: req.body.subject,
       message: req.body.message,
@@ -187,7 +192,7 @@ router.post('/emails', isAuthenticated, isAdmin, async (req, res) => {
     res.render('dashboard/emails', {
       title: 'Enviar E-mail - ZeroCert ICP-Brasil',
       users,
-      success: `E-mail enviado para ${recipientUsers.length} destinatário(s).`
+      success: `${result.count} e-mail(s) adicionados à fila de envio.`
     });
   } catch (error) {
     res.render('dashboard/emails', {

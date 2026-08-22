@@ -12,6 +12,8 @@ const {
   createDatabaseSessionStore,
   getSessionCookieConfig
 } = require('./services/session-store');
+const { startEmailQueueWorker } = require('./services/email-queue');
+const { emailService } = require('./services/email');
 
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
@@ -56,6 +58,12 @@ initializeDatabase().then(({ models }) => {
     res.locals.user = req.session.user || null;
     res.locals.requireNameCorrection = Boolean(req.session.requireNameCorrection);
     next();
+  });
+
+  startEmailQueueWorker({
+    deliveryModel: models.EmailDelivery,
+    emailService,
+    intervalMs: Number(process.env.EMAIL_QUEUE_INTERVAL_MS || 3000)
   });
   
   return initializeCA();
