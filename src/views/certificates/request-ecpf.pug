@@ -21,8 +21,8 @@ block content
                 label.form-label(for='birthDate') Data de Nascimento
                 input#birthDate.form-control(type='date', name='birthDate', value=formData ? formData.birthDate : '', required)
               .col-md-4
-                label.form-label(for='socialSecurity') PIS/PASEP/NIS
-                input#socialSecurity.form-control(type='text', name='socialSecurity', value=formData ? formData.socialSecurity : '', placeholder='000.00000.00-0', required)
+                label.form-label(for='socialSecurity') PIS/PASEP/NIS (opcional)
+                input#socialSecurity.form-control(type='text', name='socialSecurity', value=formData ? formData.socialSecurity : '', placeholder='000.00000.00-0')
               .col-md-4
                 label.form-label(for='email') E-mail
                 input#email.form-control(type='email', name='email', value=formData ? formData.email : user.email, required)

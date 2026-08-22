@@ -203,6 +203,24 @@ describe('dashboard views', () => {
     expect(html).toContain('/certificates/request/ecnpj');
   });
 
+  test('does not require social security number when requesting e-CPF certificates', () => {
+    const html = renderView('certificates/request-ecpf.pug', {
+      title: 'Solicitar Certificado e-CPF',
+      user: {
+        id: 3,
+        username: 'ANSIL4',
+        fullName: 'ANA SILVA',
+        email: 'ana@example.com',
+        role: 'user'
+      },
+      formData: null
+    });
+    const socialSecurityInput = html.match(/<input[^>]*id="socialSecurity"[^>]*>/);
+
+    expect(socialSecurityInput).not.toBeNull();
+    expect(socialSecurityInput[0]).not.toContain('required');
+  });
+
   test('show admin approval actions for pending certificate requests', () => {
     const html = renderView('dashboard/certificate-requests.pug', {
       title: 'Solicitações de Certificado',
