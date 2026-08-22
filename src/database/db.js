@@ -35,6 +35,7 @@ function registerModels(targetSequelize) {
   const Certificate = require('../models/Certificate')(targetSequelize);
   const CertificateAuthority = require('../models/CertificateAuthority')(targetSequelize);
   const CertificateRequest = require('../models/CertificateRequest')(targetSequelize);
+  const Session = require('../models/Session')(targetSequelize);
 
   User.hasMany(Certificate, { foreignKey: 'userId' });
   Certificate.belongsTo(User, { foreignKey: 'userId' });
@@ -49,7 +50,7 @@ function registerModels(targetSequelize) {
   Certificate.hasOne(CertificateRequest, { foreignKey: 'certificateId' });
   CertificateRequest.belongsTo(Certificate, { foreignKey: 'certificateId' });
 
-  return { User, Certificate, CertificateAuthority, CertificateRequest };
+  return { User, Certificate, CertificateAuthority, CertificateRequest, Session };
 }
 
 async function initializeDatabase() {

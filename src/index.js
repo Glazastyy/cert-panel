@@ -8,69 +8,63 @@ const { execSync } = require('child_process');
 const { initializeDatabase } = require('./database/db');
 const { initializeCA } = require('./services/ca');
 const { getRequiredEnv } = require('./config/security');
+const {
+  createDatabaseSessionStore,
+  getSessionCookieConfig
+} = require('./services/session-store');
 
-// Importação das rotas
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
 const certificateRoutes = require('./routes/certificates');
 
-// Inicialização do app Express
 const app = express();
 const HTTP_PORT = process.env.HTTP_PORT || 3000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 6723;
 const APP_HOST = process.env.APP_HOST || '0.0.0.0';
 const sessionSecret = getRequiredEnv('SESSION_SECRET');
 
-// Configuração do mecanismo de visualização
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middleware para processamento de requisições
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração da sessão
-app.use(session({
-  secret: sessionSecret,
-  resave: false,
-  saveUninitialized: true,
-  cookie: { 
-    secure: false, // Será definido como true para requisições HTTPS
-    sameSite: 'lax'
-  }
-}));
-
-// Middleware para ajustar configuração de cookie baseado no protocolo
-app.use((req, res, next) => {
-  if (req.secure) {
-    // Se a requisição for HTTPS, define o cookie como seguro
-    req.session.cookie.secure = true;
-  }
-  next();
-});
-
-// Middleware para disponibilizar variáveis globais para as views
-app.use((req, res, next) => {
-  res.locals.user = req.session.user || null;
-  next();
-});
-
-// Inicialização do banco de dados
-initializeDatabase().then(() => {
+initializeDatabase().then(({ models }) => {
   console.log('Banco de dados inicializado com sucesso');
+
+  app.use(session({
+    secret: sessionSecret,
+    store: createDatabaseSessionStore({
+      sessionModel: models.Session,
+      ttlMs: Number(process.env.SESSION_MAX_AGE_MS || 24 * 60 * 60 * 1000)
+    }),
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+    cookie: getSessionCookieConfig()
+  }));
+
+  app.use((req, res, next) => {
+    if (req.secure) {
+      req.session.cookie.secure = true;
+    }
+    next();
+  });
+
+  app.use((req, res, next) => {
+    res.locals.user = req.session.user || null;
+    next();
+  });
   
-  // Inicialização da CA (Autoridade Certificadora)
   return initializeCA();
 }).then(() => {
   console.log('Autoridade Certificadora (CA) inicializada com sucesso');
   
-  // Configuração das rotas
   app.use('/', authRoutes);
   app.use('/dashboard', dashboardRoutes);
   app.use('/certificates', certificateRoutes);
   
-  // Rota para a página inicial
   app.get('/', (req, res) => {
     if (req.session.user) {
       return res.redirect('/dashboard');
@@ -78,9 +72,7 @@ initializeDatabase().then(() => {
     res.render('index', { title: 'ZeroCert - Simulador ICP-Brasil' });
   });
   
-  // Função para gerar certificado SSL usando OpenSSL
   function generateSSLCertificate() {
-    // Obter configurações do arquivo .env
     const sslDir = process.env.SSL_DIRECTORY || 'src/ssl';
     const certPath = path.join(__dirname, '..', sslDir, 'cert.pem');
     const keyPath = path.join(__dirname, '..', sslDir, 'key.pem');
@@ -94,13 +86,11 @@ initializeDatabase().then(() => {
     const domains = (process.env.SSL_DOMAINS || 'localhost').split(',');
     const ips = (process.env.SSL_IPS || '127.0.0.1').split(',');
     
-    // Criar diretório SSL se não existir
     const sslDirPath = path.join(__dirname, '..', sslDir);
     if (!fs.existsSync(sslDirPath)) {
       fs.mkdirSync(sslDirPath, { recursive: true });
     }
     
-    // Remover certificados antigos se existirem
     if (fs.existsSync(certPath)) {
       fs.unlinkSync(certPath);
       console.log(`Certificado antigo removido: ${certPath}`);
@@ -111,7 +101,6 @@ initializeDatabase().then(() => {
       console.log(`Chave privada antiga removida: ${keyPath}`);
     }
     
-    // Construir extensões SAN (Subject Alternative Names)
     let sanExtensions = '';
     domains.forEach(domain => {
       sanExtensions += `DNS:${domain.trim()},`;
@@ -121,10 +110,8 @@ initializeDatabase().then(() => {
       sanExtensions += `IP:${ip.trim()},`;
     });
     
-    // Remover a última vírgula
     sanExtensions = sanExtensions.slice(0, -1);
     
-    // Comando OpenSSL para gerar certificado
     const opensslCommand = `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -days ${daysValid} -nodes -subj "/CN=${commonName}/O=${organization}/OU=${organizationalUnit}/C=${country}/ST=${state}/L=${locality}" -addext "subjectAltName=${sanExtensions}"`;
     
     try {
@@ -140,23 +127,19 @@ initializeDatabase().then(() => {
     }
   }
   if (require.main === module) {
-    // Gerar certificado SSL e iniciar servidores
     try {
       const { certPath, keyPath } = generateSSLCertificate();
       
-      // Configurar opções HTTPS
       const httpsOptions = {
         key: fs.readFileSync(keyPath),
         cert: fs.readFileSync(certPath)
       };
       
-      // Inicialização do servidor HTTP e HTTPS
       app.listen(HTTP_PORT, APP_HOST, () => {
         console.log(`Servidor HTTP rodando na porta ${HTTP_PORT}`);
         console.log(`Acesse: http://localhost:${HTTP_PORT}`);
       });
       
-      // Iniciar servidor HTTPS
       https.createServer(httpsOptions, app).listen(HTTPS_PORT, APP_HOST, () => {
         console.log(`Servidor HTTPS rodando na porta ${HTTPS_PORT}`);
         console.log(`Acesse: https://localhost:${HTTPS_PORT}`);
@@ -164,7 +147,6 @@ initializeDatabase().then(() => {
     } catch (error) {
       console.error('Falha ao configurar HTTPS:', error);
       
-      // Iniciar apenas o servidor HTTP em caso de falha no HTTPS
       app.listen(HTTP_PORT, APP_HOST, () => {
         console.log(`Servidor HTTP rodando na porta ${HTTP_PORT} (HTTPS falhou)`);
         console.log(`Acesse: http://localhost:${HTTP_PORT}`);

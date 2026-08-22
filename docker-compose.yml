@@ -26,6 +26,7 @@ services:
     environment:
       NODE_ENV: production
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      SESSION_MAX_AGE_MS: ${SESSION_MAX_AGE_MS:-86400000}
       DB_DIALECT: postgres
       DB_HOST: postgres
       DB_PORT: 5432

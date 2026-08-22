@@ -51,6 +51,7 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 
    # Configurações da Aplicação (opcionais)
    # SESSION_SECRET=sua_chave_secreta_para_sessoes
+   # SESSION_MAX_AGE_MS=86400000
    # DB_PATH=src/data/database.sqlite
    # DB_DIALECT=postgres
    # DB_HOST=localhost
