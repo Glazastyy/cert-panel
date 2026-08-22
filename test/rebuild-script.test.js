@@ -133,4 +133,51 @@ describe('rebuild script', () => {
     expect(result.status).toBe(0);
     expect(fs.readFileSync(captureFile, 'utf8')).toContain('-e MIGRATION_ALLOW_NON_EMPTY=true');
   });
+
+  test('asks for merge mode when migration is selected from the interactive menu', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cert-panel-rebuild-menu-'));
+    const envFile = path.join(tempDir, '.env');
+    const binDir = path.join(tempDir, 'bin');
+    const captureFile = path.join(tempDir, 'docker-commands.txt');
+    const sqlitePath = path.join(tempDir, 'database.sqlite');
+
+    fs.mkdirSync(binDir);
+    fs.writeFileSync(sqlitePath, '');
+    fs.writeFileSync(envFile, [
+      'SESSION_SECRET=test-session-secret',
+      'POSTGRES_PASSWORD=test-postgres-password',
+      'DB_PASSWORD=test-postgres-password',
+      'POSTGRES_DB=zerocert',
+      'POSTGRES_USER=zerocert',
+      'APP_HTTP_PORT=3000',
+      'APP_HTTPS_PORT=3443',
+      'DB_DIALECT=postgres',
+      'DB_HOST=localhost',
+      'DB_PORT=5432',
+      'DB_NAME=zerocert',
+      'DB_USER=zerocert',
+      `SQLITE_DB_PATH=${sqlitePath}`,
+      'EMAIL_PROVIDER=smtp'
+    ].join('\n'));
+    fs.writeFileSync(path.join(binDir, 'docker'), [
+      '#!/usr/bin/env bash',
+      'printf "%s\\n" "$*" >> "$CAPTURE_FILE"'
+    ].join('\n'));
+    fs.chmodSync(path.join(binDir, 'docker'), 0o755);
+
+    const result = spawnSync('bash', [scriptPath], {
+      cwd: path.join(__dirname, '..'),
+      env: {
+        CAPTURE_FILE: captureFile,
+        ENV_FILE: envFile,
+        PATH: `${binDir}:${process.env.PATH}`
+      },
+      input: '9\ns\n',
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('9) migrate');
+    expect(fs.readFileSync(captureFile, 'utf8')).toContain('-e MIGRATION_ALLOW_NON_EMPTY=true');
+  });
 });

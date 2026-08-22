@@ -287,6 +287,7 @@ run_migration() {
   init_config false
   local sqlite_path
   local sqlite_absolute_path
+  local merge_answer
 
   sqlite_path="${MIGRATION_SQLITE_PATH:-$(env_value SQLITE_DB_PATH)}"
 
@@ -298,6 +299,18 @@ run_migration() {
   if [[ ! -f "$sqlite_path" ]]; then
     printf 'Arquivo SQLite não encontrado: %s\n' "$sqlite_path" >&2
     exit 1
+  fi
+
+  if [[ "$ASSUME_YES" != "true" && "$MIGRATION_ALLOW_NON_EMPTY" != "true" ]]; then
+    printf '%s\n' "O banco PostgreSQL atual pode já conter dados."
+    printf '%s\n' "Se permitir merge, registros com os mesmos IDs serão atualizados pelo SQLite."
+    read -r -p "Permitir merge em banco não vazio? [s/N]: " merge_answer
+
+    case "${merge_answer,,}" in
+      s|sim|y|yes)
+        MIGRATION_ALLOW_NON_EMPTY="true"
+        ;;
+    esac
   fi
 
   sqlite_absolute_path="$(cd "$(dirname "$sqlite_path")" && pwd)/$(basename "$sqlite_path")"
