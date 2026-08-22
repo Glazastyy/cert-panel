@@ -51,6 +51,23 @@ const dateToDDMMYYYY = (value) => {
   return `${day}${month}${year}`;
 };
 
+async function loadEmailQueueState() {
+  const EmailDelivery = sequelize.models.EmailDelivery;
+  const statuses = ['pending', 'processing', 'sent', 'failed'];
+  const queueSummaryEntries = await Promise.all(statuses.map(async (statusName) => [
+    statusName,
+    await EmailDelivery.count({ where: { status: statusName } })
+  ]));
+
+  return {
+    queueSummary: Object.fromEntries(queueSummaryEntries),
+    recentDeliveries: await EmailDelivery.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 20
+    })
+  };
+}
+
 // Rota para o dashboard principal
 router.get('/', isAuthenticated, async (req, res) => {
   try {
@@ -149,10 +166,12 @@ router.get('/emails', isAuthenticated, isAdmin, async (req, res) => {
       where: { active: true },
       order: [['fullName', 'ASC']]
     });
+    const queueState = await loadEmailQueueState();
 
     res.render('dashboard/emails', {
       title: 'Enviar E-mail - ZeroCert ICP-Brasil',
-      users
+      users,
+      ...queueState
     });
   } catch (error) {
     console.error('Erro ao carregar painel de e-mails:', error);
@@ -192,12 +211,14 @@ router.post('/emails', isAuthenticated, isAdmin, async (req, res) => {
     res.render('dashboard/emails', {
       title: 'Enviar E-mail - ZeroCert ICP-Brasil',
       users,
+      ...await loadEmailQueueState(),
       success: `${result.count} e-mail(s) adicionados à fila de envio.`
     });
   } catch (error) {
     res.render('dashboard/emails', {
       title: 'Enviar E-mail - ZeroCert ICP-Brasil',
       users,
+      ...await loadEmailQueueState(),
       error: error.message || 'Ocorreu um erro ao enviar o e-mail.',
       formData: req.body
     });

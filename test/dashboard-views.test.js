@@ -180,6 +180,24 @@ describe('dashboard views', () => {
           fullName: 'Usuário Teste',
           email: 'usuario@example.com'
         }
+      ],
+      queueSummary: {
+        pending: 2,
+        processing: 1,
+        sent: 8,
+        failed: 1
+      },
+      recentDeliveries: [
+        {
+          id: 10,
+          toEmail: 'usuario@example.com',
+          subject: 'Aviso',
+          status: 'pending',
+          attempts: 0,
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          sentAt: null,
+          lastError: null
+        }
       ]
     });
 
@@ -189,5 +207,11 @@ describe('dashboard views', () => {
     expect(html).toContain('name="message"');
     expect(html).toContain('Enviar E-mail');
     expect(html).toContain('usuario@example.com');
+    expect(html).toContain('Fila de Envio');
+    expect(html).toContain('Pendentes');
+    expect(html).toContain('Processando');
+    expect(html).toContain('Enviados');
+    expect(html).toContain('Falhas');
+    expect(html).toContain('Aviso');
   });
 });

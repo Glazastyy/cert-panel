@@ -79,3 +79,59 @@ block content
           button.btn.btn-primary(type='submit')
             i.bi.bi-send.me-2
             | Enviar E-mail
+
+  .card.mt-4
+    .card-header.bg-secondary.text-white
+      h5.mb-0 Fila de Envio
+    .card-body
+      .row.g-3.mb-4
+        .col-md-3
+          .border.rounded.p-3.h-100
+            .text-muted.small Pendentes
+            .fs-4.fw-bold #{queueSummary ? queueSummary.pending : 0}
+        .col-md-3
+          .border.rounded.p-3.h-100
+            .text-muted.small Processando
+            .fs-4.fw-bold #{queueSummary ? queueSummary.processing : 0}
+        .col-md-3
+          .border.rounded.p-3.h-100
+            .text-muted.small Enviados
+            .fs-4.fw-bold #{queueSummary ? queueSummary.sent : 0}
+        .col-md-3
+          .border.rounded.p-3.h-100
+            .text-muted.small Falhas
+            .fs-4.fw-bold #{queueSummary ? queueSummary.failed : 0}
+
+      .table-responsive.table-frame
+        table.table.table-hover.mb-0.data-table
+          thead
+            tr
+              th Destinatário
+              th Assunto
+              th Status
+              th Tentativas
+              th Criado em
+              th Enviado em
+          tbody
+            if recentDeliveries && recentDeliveries.length
+              each delivery in recentDeliveries
+                tr
+                  td.email-cell #{delivery.toEmail}
+                  td.entity-cell #{delivery.subject}
+                  td.status-cell
+                    if delivery.status === 'sent'
+                      span.badge.bg-success Enviado
+                    else if delivery.status === 'failed'
+                      span.badge.bg-danger Falha
+                    else if delivery.status === 'processing'
+                      span.badge.bg-info Processando
+                    else
+                      span.badge.bg-warning.text-dark Pendente
+                    if delivery.lastError
+                      div.small.text-muted #{delivery.lastError}
+                  td.date-cell #{delivery.attempts}
+                  td.date-cell #{delivery.createdAt ? delivery.createdAt.toLocaleString('pt-BR') : '-'}
+                  td.date-cell #{delivery.sentAt ? delivery.sentAt.toLocaleString('pt-BR') : '-'}
+            else
+              tr
+                td.text-center.text-muted(colspan='6') Nenhum envio na fila.
