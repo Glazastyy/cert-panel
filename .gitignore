@@ -33,6 +33,9 @@ Thumbs.db
 .tmp
 .temp
 
+# Templates locais de e-mail
+src/public/email-templates/
+
 # Arquivos de IDE e editores
 .idea/
 .vscode/

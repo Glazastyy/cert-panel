@@ -42,7 +42,7 @@ block content
 
         .mb-3
           label.form-label(for='message') Mensagem
-          textarea#message.form-control(name='message', rows='8', maxlength='5000', required)= formData ? formData.message : ''
+          textarea#message.form-control(name='message', rows='14', maxlength='50000', required)= formData ? formData.message : ''
 
         .mb-3
           .card.border-secondary
