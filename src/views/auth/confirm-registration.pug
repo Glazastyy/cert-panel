@@ -1,0 +1,24 @@
+extends ../layout
+
+block content
+  .row.justify-content-center
+    .col-md-6
+      .card.border-primary.shadow
+        .card-header.bg-primary.text-white
+          h4.mb-0 Confirmar Cadastro
+        .card-body
+          if email
+            p.text-muted Enviamos um código de 6 caracteres para #{email}.
+          form(action='/register/confirm', method='POST')
+            .mb-3
+              label.form-label(for='code') Código de confirmação
+              input#code.form-control(type='text', name='code', maxlength='6', minlength='6', autocomplete='one-time-code', inputmode='text', required, autofocus)
+
+            .d-grid.gap-2
+              button.btn.btn-primary(type='submit') Confirmar Cadastro
+
+          hr
+
+          .text-center
+            p Não recebeu ou o código expirou?
+            a.btn.btn-outline-secondary(href='/register') Fazer Cadastro Novamente

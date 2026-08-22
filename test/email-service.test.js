@@ -63,6 +63,33 @@ describe('email service', () => {
     expect(sent[0].text).toContain('Mensagem');
   });
 
+  test('sends registration confirmation codes through the configured provider', async () => {
+    const sent = [];
+    const service = createEmailService({
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      EMAIL_FROM: 'ZeroCert <no-reply@example.com>'
+    }, {
+      createTransport: () => ({
+        sendMail: async (payload) => {
+          sent.push(payload);
+          return { messageId: 'message-1' };
+        }
+      })
+    });
+
+    await service.sendVerificationCode({
+      to: 'ana@example.com',
+      fullName: 'Ana Silva',
+      code: 'ABC123'
+    });
+
+    expect(sent[0].to).toEqual(['ana@example.com']);
+    expect(sent[0].subject).toBe('Confirme seu cadastro no ZeroCert');
+    expect(sent[0].text).toContain('Ana Silva');
+    expect(sent[0].text).toContain('ABC123');
+  });
+
   test('sends manual messages with configured Resend API', async () => {
     const requests = [];
     const service = createEmailService({

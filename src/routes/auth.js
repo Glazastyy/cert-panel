@@ -2,8 +2,22 @@ const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../database/db');
 const { emailService } = require('../services/email');
+const { emailValidator } = require('../services/email-validation');
+const { getRequiredEnv } = require('../config/security');
+const {
+  RegistrationInputError,
+  createRegistrationService
+} = require('../services/registration');
 
-// Rota para a página de login
+function createCurrentRegistrationService() {
+  return createRegistrationService({
+    userModel: sequelize.models.User,
+    emailValidator,
+    emailService,
+    sessionSecret: getRequiredEnv('SESSION_SECRET')
+  });
+}
+
 router.get('/login', (req, res) => {
   if (req.session.user) {
     return res.redirect('/dashboard');
@@ -11,13 +25,11 @@ router.get('/login', (req, res) => {
   res.render('auth/login', { title: 'Login - ZeroCert ICP-Brasil' });
 });
 
-// Rota para processar o login
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const User = sequelize.models.User;
     
-    // Buscar o usuário pelo nome de usuário
     const user = await User.findOne({ where: { username } });
     
     if (!user || !(await user.checkPassword(password))) {
@@ -36,7 +48,6 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Atualizar a data do último login
     await user.update({ lastLogin: new Date() });
     await emailService.sendNotification({
       to: user.email,
@@ -44,7 +55,6 @@ router.post('/login', async (req, res) => {
       message: `Olá, ${user.fullName}.\n\nUm login foi realizado na sua conta ZeroCert.\n\nUsuário: ${user.username}\nData e hora: ${new Date().toLocaleString('pt-BR')}`
     });
     
-    // Armazenar o usuário na sessão (excluindo a senha)
     req.session.user = {
       id: user.id,
       username: user.username,
@@ -53,7 +63,6 @@ router.post('/login', async (req, res) => {
       role: user.role
     };
     
-    // Redirecionar para o dashboard
     res.redirect('/dashboard');
   } catch (error) {
     console.error('Erro ao processar login:', error);
@@ -65,7 +74,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Rota para a página de registro (apenas para desenvolvimento)
 router.get('/register', (req, res) => {
   if (req.session.user) {
     return res.redirect('/dashboard');
@@ -73,67 +81,28 @@ router.get('/register', (req, res) => {
   res.render('auth/register', { title: 'Registro - ZeroCert ICP-Brasil' });
 });
 
-// Rota para processar o registro (apenas para desenvolvimento)
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, confirmPassword, fullName, email } = req.body;
-    const User = sequelize.models.User;
-    
-    // Validar os dados
-    if (password !== confirmPassword) {
-      return res.render('auth/register', {
-        title: 'Registro - ZeroCert ICP-Brasil',
-        error: 'As senhas não coincidem',
-        username,
-        fullName,
-        email
-      });
-    }
-    
-    // Verificar se o usuário já existe
-    const existingUser = await User.findOne({
-      where: { username }
+    const registrationService = createCurrentRegistrationService();
+    const pendingRegistration = await registrationService.beginRegistration({
+      session: req.session,
+      input: req.body
     });
-    
-    if (existingUser) {
-      return res.render('auth/register', {
-        title: 'Registro - ZeroCert ICP-Brasil',
-        error: 'Nome de usuário já está em uso',
-        fullName,
-        email
-      });
-    }
-    
-    // Verificar se o e-mail já existe
-    const existingEmail = await User.findOne({
-      where: { email }
-    });
-    
-    if (existingEmail) {
-      return res.render('auth/register', {
-        title: 'Registro - ZeroCert ICP-Brasil',
-        error: 'E-mail já está em uso',
-        username,
-        fullName
-      });
-    }
-    
-    // Criar o usuário
-    await User.create({
-      username,
-      password,
-      fullName,
-      email,
-      role: 'user' // Papel padrão para novos usuários
-    });
-    
-    // Redirecionar para a página de login com mensagem de sucesso
-    res.render('auth/login', {
-      title: 'Login - ZeroCert ICP-Brasil',
-      success: 'Registro realizado com sucesso. Faça login para continuar.',
-      username
+
+    res.render('auth/confirm-registration', {
+      title: 'Confirmar Cadastro - ZeroCert ICP-Brasil',
+      success: 'Enviamos um código de confirmação para o seu e-mail.',
+      email: pendingRegistration.email
     });
   } catch (error) {
+    if (error instanceof RegistrationInputError) {
+      return res.render('auth/register', {
+        title: 'Registro - ZeroCert ICP-Brasil',
+        error: error.message,
+        ...error.formData
+      });
+    }
+
     console.error('Erro ao processar registro:', error);
     res.render('auth/register', {
       title: 'Registro - ZeroCert ICP-Brasil',
@@ -145,7 +114,52 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Rota para logout
+router.get('/register/confirm', (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/dashboard');
+  }
+
+  if (!req.session.pendingRegistration) {
+    return res.redirect('/register');
+  }
+
+  res.render('auth/confirm-registration', {
+    title: 'Confirmar Cadastro - ZeroCert ICP-Brasil',
+    email: req.session.pendingRegistration.email
+  });
+});
+
+router.post('/register/confirm', async (req, res) => {
+  try {
+    const registrationService = createCurrentRegistrationService();
+    const user = await registrationService.confirmRegistration({
+      session: req.session,
+      code: req.body.code
+    });
+
+    res.render('auth/login', {
+      title: 'Login - ZeroCert ICP-Brasil',
+      success: 'Cadastro confirmado com sucesso. Faça login para continuar.',
+      username: user.username
+    });
+  } catch (error) {
+    if (error instanceof RegistrationInputError) {
+      return res.render('auth/confirm-registration', {
+        title: 'Confirmar Cadastro - ZeroCert ICP-Brasil',
+        error: error.message,
+        email: req.session.pendingRegistration ? req.session.pendingRegistration.email : null
+      });
+    }
+
+    console.error('Erro ao confirmar registro:', error);
+    res.render('auth/confirm-registration', {
+      title: 'Confirmar Cadastro - ZeroCert ICP-Brasil',
+      error: 'Ocorreu um erro ao confirmar o cadastro. Tente novamente mais tarde.',
+      email: req.session.pendingRegistration ? req.session.pendingRegistration.email : null
+    });
+  }
+});
+
 router.get('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {

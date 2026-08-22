@@ -195,6 +195,14 @@ function createEmailService(env = process.env, dependencies = {}) {
         finalDependencies.logger.warn('Falha ao enviar notificação por e-mail');
         return { skipped: true };
       }
+    },
+
+    async sendVerificationCode({ to, fullName, code }) {
+      return send({
+        recipients: [to],
+        subject: 'Confirme seu cadastro no ZeroCert',
+        message: `Olá, ${fullName}.\n\nSeu código de confirmação do ZeroCert é: ${code}\n\nEle expira em 15 minutos.`
+      });
     }
   };
 }
