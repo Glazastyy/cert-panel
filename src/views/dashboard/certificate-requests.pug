@@ -1,0 +1,107 @@
+extends ../layout
+
+block content
+  .d-flex.justify-content-between.align-items-center.mb-4
+    h2 Solicitações de Certificado
+    .btn-group
+      a.btn(class=status === 'pending' ? 'btn-primary' : 'btn-outline-primary', href='/dashboard/certificate-requests?status=pending') Pendentes
+      a.btn(class=status === 'approved' ? 'btn-primary' : 'btn-outline-primary', href='/dashboard/certificate-requests?status=approved') Aprovadas
+      a.btn(class=status === 'rejected' ? 'btn-primary' : 'btn-outline-primary', href='/dashboard/certificate-requests?status=rejected') Rejeitadas
+      a.btn(class=!status ? 'btn-primary' : 'btn-outline-primary', href='/dashboard/certificate-requests') Todas
+
+  .card
+    .card-header.bg-primary.text-white
+      h5.mb-0 Lista de Solicitações
+    .table-responsive
+      table.table.table-hover.mb-0
+        thead
+          tr
+            th Protocolo
+            th Tipo
+            th Solicitante
+            th Titular
+            th Data
+            th Status
+            th Ações
+        tbody
+          if requests && requests.length > 0
+            each request in requests
+              tr
+                td ##{request.id}
+                td #{request.type}
+                td
+                  | #{request.User.fullName}
+                  br
+                  small.text-muted #{request.User.email}
+                td
+                  if request.type === 'e-CPF'
+                    | #{request.payload.name}
+                    br
+                    small.text-muted CPF: #{request.payload.cpf}
+                  else
+                    | #{request.payload.companyName}
+                    br
+                    small.text-muted CNPJ: #{request.payload.cnpj}
+                td #{request.createdAt.toLocaleDateString('pt-BR')}
+                td
+                  case request.status
+                    when 'pending'
+                      span.badge.bg-warning.text-dark Pendente
+                    when 'approved'
+                      span.badge.bg-success Aprovada
+                    when 'rejected'
+                      span.badge.bg-danger Rejeitada
+                td
+                  .btn-group
+                    if request.status === 'pending'
+                      button.btn.btn-sm.btn-success(type='button', data-bs-toggle='modal', data-bs-target=`#approveRequestModal${request.id}`)
+                        i.bi.bi-check-circle.me-1
+                        | Aprovar
+                      button.btn.btn-sm.btn-danger(type='button', data-bs-toggle='modal', data-bs-target=`#rejectRequestModal${request.id}`)
+                        i.bi.bi-x-circle.me-1
+                        | Rejeitar
+                    else if request.certificateId
+                      a.btn.btn-sm.btn-primary(href=`/certificates/view/${request.certificateId}`)
+                        i.bi.bi-eye.me-1
+                        | Certificado
+                    else
+                      span.text-muted Sem ações
+          else
+            tr
+              td(colspan='7').text-center Nenhuma solicitação encontrada.
+
+  if requests && requests.length > 0
+    each request in requests
+      if request.status === 'pending'
+        .modal.fade(id=`approveRequestModal${request.id}`, tabindex='-1')
+          .modal-dialog
+            .modal-content
+              .modal-header.bg-success.text-white
+                h5.modal-title Aprovar Solicitação ##{request.id}
+                button.btn-close(type='button', data-bs-dismiss='modal', aria-label='Fechar')
+              form(action=`/dashboard/certificate-requests/${request.id}/approve`, method='POST')
+                .modal-body
+                  .mb-3
+                    label.form-label(for=`p12Password${request.id}`) Senha do Certificado
+                    input.form-control(id=`p12Password${request.id}`, type='password', name='p12Password', required)
+                  .mb-3
+                    label.form-label(for=`confirmP12Password${request.id}`) Confirmar Senha
+                    input.form-control(id=`confirmP12Password${request.id}`, type='password', name='confirmP12Password', required)
+                .modal-footer
+                  button.btn.btn-secondary(type='button', data-bs-dismiss='modal') Cancelar
+                  button.btn.btn-success(type='submit') Aprovar e Emitir
+
+        .modal.fade(id=`rejectRequestModal${request.id}`, tabindex='-1')
+          .modal-dialog
+            .modal-content
+              .modal-header.bg-danger.text-white
+                h5.modal-title Rejeitar Solicitação ##{request.id}
+                button.btn-close(type='button', data-bs-dismiss='modal', aria-label='Fechar')
+              form(action=`/dashboard/certificate-requests/${request.id}/reject`, method='POST')
+                .modal-body
+                  .mb-3
+                    label.form-label(for=`rejectionReason${request.id}`) Motivo da Rejeição
+                    textarea.form-control(id=`rejectionReason${request.id}`, name='rejectionReason', rows='4', required)
+                .modal-footer
+                  button.btn.btn-secondary(type='button', data-bs-dismiss='modal') Cancelar
+                  button.btn.btn-danger(type='submit') Rejeitar

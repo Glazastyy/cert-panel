@@ -5,6 +5,7 @@ html(lang='pt-BR')
     meta(name='viewport', content='width=device-width, initial-scale=1')
     title= title || 'ZeroCert - Simulador ICP-Brasil'
     link(rel='stylesheet', href='/css/bootstrap.min.css')
+    link(rel='stylesheet', href='/css/bootstrap-icons.min.css')
     link(rel='stylesheet', href='/css/custom.css')
     block styles
   body
@@ -33,9 +34,18 @@ html(lang='pt-BR')
                     li
                       a.dropdown-item(href='/certificates/validate') Validar Certificado
               else
-                li.nav-item
-                  a.nav-link(href='/certificates/validate') Validar Certificado
+                li.nav-item.dropdown
+                  a.nav-link.dropdown-toggle(href='#', role='button', data-bs-toggle='dropdown') Certificados
+                  ul.dropdown-menu
+                    li
+                      a.dropdown-item(href='/certificates/request/ecpf') Solicitar e-CPF
+                    li
+                      a.dropdown-item(href='/certificates/request/ecnpj') Solicitar e-CNPJ
+                    li
+                      a.dropdown-item(href='/certificates/validate') Validar Certificado
               if user.role === 'admin'
+                li.nav-item
+                  a.nav-link(href='/dashboard/certificate-requests') Solicitações
                 li.nav-item
                   a.nav-link(href='/dashboard/users') Usuários
           ul.navbar-nav

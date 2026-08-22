@@ -90,6 +90,12 @@ block content
               | Validar Certificado
             
             if user.role === 'admin'
+              a.btn.btn-outline-primary(href='/dashboard/certificate-requests?status=pending')
+                i.bi.bi-inbox.me-2
+                | Solicitações Pendentes
+                if pendingCertificateRequests
+                  span.badge.bg-danger.ms-2 #{pendingCertificateRequests}
+
               a.btn.btn-outline-primary(href='/dashboard/users/add')
                 i.bi.bi-person-plus.me-2
                 | Adicionar Novo Usuário

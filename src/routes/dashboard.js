@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../database/db');
+const { createECPFCertificate, createECNPJCertificate } = require('../services/ca');
 
 // Middleware para verificar se o usuário está autenticado
 const isAuthenticated = (req, res, next) => {
@@ -34,6 +35,15 @@ const isAdminOrOperator = (req, res, next) => {
   next();
 };
 
+const dateToDDMMYYYY = (value) => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const [year, month, day] = value.split('-');
+  return `${day}${month}${year}`;
+};
+
 // Rota para o dashboard principal
 router.get('/', isAuthenticated, async (req, res) => {
   try {
@@ -42,10 +52,12 @@ router.get('/', isAuthenticated, async (req, res) => {
     
     // Estatísticas para administradores e operadores
     if (req.session.user.role === 'admin' || req.session.user.role === 'operator') {
+      const CertificateRequest = sequelize.models.CertificateRequest;
       const totalCertificates = await Certificate.count();
       const activeCertificates = await Certificate.count({ where: { revoked: false } });
       const revokedCertificates = await Certificate.count({ where: { revoked: true } });
       const totalUsers = await User.count();
+      const pendingCertificateRequests = await CertificateRequest.count({ where: { status: 'pending' } });
       
       const recentCertificates = await Certificate.findAll({
         limit: 5,
@@ -59,6 +71,7 @@ router.get('/', isAuthenticated, async (req, res) => {
         activeCertificates,
         revokedCertificates,
         totalUsers,
+        pendingCertificateRequests,
         recentCertificates
       });
     }
@@ -80,6 +93,155 @@ router.get('/', isAuthenticated, async (req, res) => {
       message: 'Ocorreu um erro ao carregar o dashboard.',
       error: { status: 500 }
     });
+  }
+});
+
+router.get('/certificate-requests', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const CertificateRequest = sequelize.models.CertificateRequest;
+    const User = sequelize.models.User;
+    const status = ['pending', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : null;
+    const where = status ? { status } : {};
+
+    const requests = await CertificateRequest.findAll({
+      where,
+      include: [
+        {
+          model: User,
+          attributes: ['username', 'fullName', 'email']
+        },
+        {
+          model: User,
+          as: 'Reviewer',
+          attributes: ['username', 'fullName', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.render('dashboard/certificate-requests', {
+      title: 'Solicitações de Certificado - ZeroCert ICP-Brasil',
+      requests,
+      status
+    });
+  } catch (error) {
+    console.error('Erro ao carregar solicitações de certificado:', error);
+    res.status(500).render('error', {
+      title: 'Erro',
+      message: 'Ocorreu um erro ao carregar as solicitações de certificado.',
+      error: { status: 500 }
+    });
+  }
+});
+
+router.post('/certificate-requests/:id/approve', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const { p12Password, confirmP12Password } = req.body;
+    const CertificateRequest = sequelize.models.CertificateRequest;
+
+    const request = await CertificateRequest.findByPk(req.params.id);
+
+    if (!request || request.status !== 'pending') {
+      req.session.flashMessage = {
+        type: 'error',
+        text: 'Solicitação pendente não encontrada'
+      };
+      return res.redirect('/dashboard/certificate-requests?status=pending');
+    }
+
+    if (p12Password !== confirmP12Password) {
+      req.session.flashMessage = {
+        type: 'error',
+        text: 'As senhas do certificado não coincidem'
+      };
+      return res.redirect('/dashboard/certificate-requests?status=pending');
+    }
+
+    const payload = request.payload;
+    const certificate = request.type === 'e-CPF'
+      ? await createECPFCertificate({
+        ...payload,
+        birthDate: dateToDDMMYYYY(payload.birthDate),
+        p12Password,
+        userId: request.userId
+      })
+      : await createECNPJCertificate({
+        companyName: payload.companyName,
+        cnpj: payload.cnpj,
+        responsibleName: payload.responsibleName,
+        responsibleCPF: payload.responsibleCpf,
+        email: payload.email,
+        state: payload.state,
+        city: payload.city,
+        p12Password,
+        userId: request.userId
+      });
+
+    await request.update({
+      status: 'approved',
+      reviewedAt: new Date(),
+      reviewedBy: req.session.user.id,
+      certificateId: certificate.id
+    });
+
+    req.session.flashMessage = {
+      type: 'success',
+      text: 'Solicitação aprovada e certificado emitido com sucesso'
+    };
+
+    res.redirect(`/certificates/view/${certificate.id}`);
+  } catch (error) {
+    console.error('Erro ao aprovar solicitação de certificado:', error);
+    req.session.flashMessage = {
+      type: 'error',
+      text: 'Ocorreu um erro ao aprovar a solicitação'
+    };
+    res.redirect('/dashboard/certificate-requests?status=pending');
+  }
+});
+
+router.post('/certificate-requests/:id/reject', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const CertificateRequest = sequelize.models.CertificateRequest;
+    const rejectionReason = String(req.body.rejectionReason || '').trim();
+    const request = await CertificateRequest.findByPk(req.params.id);
+
+    if (!request || request.status !== 'pending') {
+      req.session.flashMessage = {
+        type: 'error',
+        text: 'Solicitação pendente não encontrada'
+      };
+      return res.redirect('/dashboard/certificate-requests?status=pending');
+    }
+
+    if (!rejectionReason) {
+      req.session.flashMessage = {
+        type: 'error',
+        text: 'Informe o motivo da rejeição'
+      };
+      return res.redirect('/dashboard/certificate-requests?status=pending');
+    }
+
+    await request.update({
+      status: 'rejected',
+      rejectionReason,
+      reviewedAt: new Date(),
+      reviewedBy: req.session.user.id
+    });
+
+    req.session.flashMessage = {
+      type: 'success',
+      text: 'Solicitação rejeitada com sucesso'
+    };
+
+    res.redirect('/dashboard/certificate-requests?status=pending');
+  } catch (error) {
+    console.error('Erro ao rejeitar solicitação de certificado:', error);
+    req.session.flashMessage = {
+      type: 'error',
+      text: 'Ocorreu um erro ao rejeitar a solicitação'
+    };
+    res.redirect('/dashboard/certificate-requests?status=pending');
   }
 });
 
@@ -351,8 +513,11 @@ router.get('/certificates', isAuthenticated, isAdminOrOperator, async (req, res)
   try {
     const Certificate = sequelize.models.Certificate;
     const User = sequelize.models.User;
+    const status = ['active', 'revoked'].includes(req.query.status) ? req.query.status : null;
+    const where = status === 'active' ? { revoked: false } : status === 'revoked' ? { revoked: true } : {};
     
     const certificates = await Certificate.findAll({
+      where,
       include: [{
         model: User,
         attributes: ['username', 'fullName']
@@ -362,7 +527,8 @@ router.get('/certificates', isAuthenticated, isAdminOrOperator, async (req, res)
     
     res.render('dashboard/certificates', {
       title: 'Gerenciar Certificados - ZeroCert ICP-Brasil',
-      certificates
+      certificates,
+      status
     });
   } catch (error) {
     console.error('Erro ao carregar certificados:', error);

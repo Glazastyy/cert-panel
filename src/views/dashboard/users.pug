@@ -46,9 +46,11 @@ block content
                 td
                   .btn-group
                     a.btn.btn-sm.btn-primary(href=`/dashboard/users/edit/${user.id}`, title='Editar')
-                      i.bi.bi-pencil
+                      i.bi.bi-pencil.me-1
+                      | Editar
                     button.btn.btn-sm.btn-danger(type='button', data-bs-toggle='modal', data-bs-target='#deleteUserModal', data-user-id=user.id, data-user-name=user.fullName, title='Excluir')
-                      i.bi.bi-trash
+                      i.bi.bi-trash.me-1
+                      | Excluir
           else
             tr
               td(colspan='7').text-center Nenhum usuário encontrado.

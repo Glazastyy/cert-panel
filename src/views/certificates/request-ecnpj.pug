@@ -1,0 +1,58 @@
+extends ../layout
+
+block content
+  .row.justify-content-center
+    .col-md-10
+      .card.border-primary
+        .card-header.bg-primary.text-white
+          h4.mb-0 Solicitar Certificado e-CNPJ
+        .card-body
+          form(action='/certificates/request/ecnpj', method='POST')
+            h5.mb-3 Dados da Empresa
+            .row.mb-3
+              .col-md-6
+                label.form-label(for='companyName') Razão Social
+                input#companyName.form-control(type='text', name='companyName', value=formData ? formData.companyName : '', required)
+              .col-md-6
+                label.form-label(for='cnpj') CNPJ
+                input#cnpj.form-control(type='text', name='cnpj', value=formData ? formData.cnpj : '', placeholder='00.000.000/0000-00', required)
+            .row.mb-3
+              .col-md-6
+                label.form-label(for='tradeName') Nome Fantasia
+                input#tradeName.form-control(type='text', name='tradeName', value=formData ? formData.tradeName : '', required)
+              .col-md-6
+                label.form-label(for='email') E-mail
+                input#email.form-control(type='email', name='email', value=formData ? formData.email : user.email, required)
+            h5.mt-4.mb-3 Dados do Responsável Legal
+            .row.mb-3
+              .col-md-6
+                label.form-label(for='responsibleName') Nome Completo
+                input#responsibleName.form-control(type='text', name='responsibleName', value=formData ? formData.responsibleName : user.fullName, required)
+              .col-md-6
+                label.form-label(for='responsibleCpf') CPF
+                input#responsibleCpf.form-control(type='text', name='responsibleCpf', value=formData ? formData.responsibleCpf : '', placeholder='000.000.000-00', required)
+            .row.mb-3
+              .col-md-6
+                label.form-label(for='responsiblePosition') Cargo
+                input#responsiblePosition.form-control(type='text', name='responsiblePosition', value=formData ? formData.responsiblePosition : '', required)
+              .col-md-6
+                label.form-label(for='responsibleBirthDate') Data de Nascimento
+                input#responsibleBirthDate.form-control(type='date', name='responsibleBirthDate', value=formData ? formData.responsibleBirthDate : '', required)
+            h5.mt-4.mb-3 Endereço da Empresa
+            .row.mb-3
+              .col-md-6
+                label.form-label(for='state') Estado
+                select#state.form-select(name='state', required)
+                  option(value='', disabled, selected=!formData) Selecione um estado
+                  each uf in ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
+                    option(value=uf, selected=formData && formData.state === uf)= uf
+              .col-md-6
+                label.form-label(for='city') Cidade
+                input#city.form-control(type='text', name='city', value=formData ? formData.city : '', required)
+            .d-flex.justify-content-between.mt-4
+              a.btn.btn-secondary(href='/dashboard')
+                i.bi.bi-arrow-left.me-2
+                | Voltar
+              button.btn.btn-primary(type='submit')
+                i.bi.bi-send.me-2
+                | Enviar Solicitação

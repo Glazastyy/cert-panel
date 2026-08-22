@@ -5,7 +5,6 @@ const { createECPFCertificate, createECNPJCertificate, revokeCertificate } = req
 const fs = require('fs');
 const path = require('path');
 
-// Middleware para verificar se o usuário está autenticado
 const isAuthenticated = (req, res, next) => {
   if (!req.session.user) {
     return res.redirect('/login');
@@ -13,7 +12,6 @@ const isAuthenticated = (req, res, next) => {
   next();
 };
 
-// Middleware para verificar se o usuário é administrador ou operador
 const isAdminOrOperator = (req, res, next) => {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'operator')) {
     return res.status(403).render('error', {
@@ -25,7 +23,123 @@ const isAdminOrOperator = (req, res, next) => {
   next();
 };
 
-// Rota para a página de emissão de certificado e-CPF
+const isPrivilegedUser = (user) => user && (user.role === 'admin' || user.role === 'operator');
+
+const dateToDDMMYYYY = (value) => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const [year, month, day] = value.split('-');
+  return `${day}${month}${year}`;
+};
+
+const getTargetUserId = (req) => {
+  if (isPrivilegedUser(req.session.user)) {
+    return req.body.userId;
+  }
+
+  return req.session.user.id;
+};
+
+router.get('/request/ecpf', isAuthenticated, (req, res) => {
+  res.render('certificates/request-ecpf', {
+    title: 'Solicitar Certificado e-CPF - ZeroCert ICP-Brasil'
+  });
+});
+
+router.post('/request/ecpf', isAuthenticated, async (req, res) => {
+  try {
+    const CertificateRequest = sequelize.models.CertificateRequest;
+    const { name, cpf, birthDate, socialSecurity, email, state, city } = req.body;
+
+    await CertificateRequest.create({
+      type: 'e-CPF',
+      status: 'pending',
+      payload: {
+        name,
+        cpf,
+        birthDate,
+        socialSecurity,
+        email,
+        state,
+        city
+      },
+      userId: req.session.user.id
+    });
+
+    req.session.flashMessage = {
+      type: 'success',
+      text: 'Solicitação de certificado e-CPF enviada para aprovação'
+    };
+
+    res.redirect('/dashboard');
+  } catch (error) {
+    console.error('Erro ao solicitar certificado e-CPF:', error);
+    res.render('certificates/request-ecpf', {
+      title: 'Solicitar Certificado e-CPF - ZeroCert ICP-Brasil',
+      error: 'Ocorreu um erro ao enviar a solicitação. Tente novamente mais tarde.',
+      formData: req.body
+    });
+  }
+});
+
+router.get('/request/ecnpj', isAuthenticated, (req, res) => {
+  res.render('certificates/request-ecnpj', {
+    title: 'Solicitar Certificado e-CNPJ - ZeroCert ICP-Brasil'
+  });
+});
+
+router.post('/request/ecnpj', isAuthenticated, async (req, res) => {
+  try {
+    const CertificateRequest = sequelize.models.CertificateRequest;
+    const {
+      companyName,
+      cnpj,
+      tradeName,
+      responsibleName,
+      responsibleCpf,
+      responsiblePosition,
+      responsibleBirthDate,
+      email,
+      state,
+      city
+    } = req.body;
+
+    await CertificateRequest.create({
+      type: 'e-CNPJ',
+      status: 'pending',
+      payload: {
+        companyName,
+        cnpj,
+        tradeName,
+        responsibleName,
+        responsibleCpf,
+        responsiblePosition,
+        responsibleBirthDate,
+        email,
+        state,
+        city
+      },
+      userId: req.session.user.id
+    });
+
+    req.session.flashMessage = {
+      type: 'success',
+      text: 'Solicitação de certificado e-CNPJ enviada para aprovação'
+    };
+
+    res.redirect('/dashboard');
+  } catch (error) {
+    console.error('Erro ao solicitar certificado e-CNPJ:', error);
+    res.render('certificates/request-ecnpj', {
+      title: 'Solicitar Certificado e-CNPJ - ZeroCert ICP-Brasil',
+      error: 'Ocorreu um erro ao enviar a solicitação. Tente novamente mais tarde.',
+      formData: req.body
+    });
+  }
+});
+
 router.get('/issue/ecpf', isAuthenticated, isAdminOrOperator, (req, res) => {
   res.render('certificates/issue-ecpf', {
     title: 'Emitir Certificado e-CPF - ZeroCert ICP-Brasil'
@@ -45,8 +159,8 @@ router.post('/issue/ecpf', isAuthenticated, isAdminOrOperator, async (req, res) 
       city,
       p12Password,
       confirmP12Password,
-      userId
     } = req.body;
+    const targetUserId = getTargetUserId(req);
     
     // Validar os dados
     if (p12Password !== confirmP12Password) {
@@ -59,7 +173,7 @@ router.post('/issue/ecpf', isAuthenticated, isAdminOrOperator, async (req, res) 
     
     // Verificar se o usuário existe
     const User = sequelize.models.User;
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(targetUserId);
     
     if (!user) {
       return res.render('certificates/issue-ecpf', {
@@ -73,13 +187,13 @@ router.post('/issue/ecpf', isAuthenticated, isAdminOrOperator, async (req, res) 
     const certificate = await createECPFCertificate({
       name,
       cpf,
-      birthDate,
+      birthDate: dateToDDMMYYYY(birthDate),
       socialSecurity,
       email,
       state,
       city,
       p12Password,
-      userId
+      userId: targetUserId
     });
     
     // Redirecionar para a página de detalhes do certificado
@@ -119,8 +233,8 @@ router.post('/issue/ecnpj', isAuthenticated, isAdminOrOperator, async (req, res)
       city,
       p12Password,
       confirmP12Password,
-      userId
     } = req.body;
+    const targetUserId = getTargetUserId(req);
     
     // Validar os dados
     if (p12Password !== confirmP12Password) {
@@ -133,7 +247,7 @@ router.post('/issue/ecnpj', isAuthenticated, isAdminOrOperator, async (req, res)
     
     // Verificar se o usuário existe
     const User = sequelize.models.User;
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(targetUserId);
     
     if (!user) {
       return res.render('certificates/issue-ecnpj', {
@@ -153,7 +267,7 @@ router.post('/issue/ecnpj', isAuthenticated, isAdminOrOperator, async (req, res)
       state,
       city,
       p12Password,
-      userId
+      userId: targetUserId
     });
     
     // Redirecionar para a página de detalhes do certificado
