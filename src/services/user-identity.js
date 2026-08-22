@@ -32,15 +32,26 @@ function normalizeUsername(username) {
 }
 
 function isUsernameCompliant(username) {
-  return /^[A-Z0-9]+$/.test(String(username || ''));
+  return /^[A-Z0-9]{1,6}$/.test(String(username || ''));
 }
 
-function buildUsernameBase(fullName) {
-  return normalizeUsername(normalizeFullName(fullName));
+function buildUsernamePrefix(fullName) {
+  const parts = normalizeFullName(fullName).split(' ').filter(Boolean);
+  const first = normalizeUsername(parts[0] || '');
+  const last = normalizeUsername(parts[parts.length - 1] || '');
+  const prefix = `${first.slice(0, 2)}${last.slice(0, 3)}`.padEnd(5, 'X');
+
+  return prefix.slice(0, 5);
 }
 
 function randomTwoDigits() {
   return String(crypto.randomInt(0, 100)).padStart(2, '0');
+}
+
+function normalizeNumericSuffix(value, size) {
+  const digits = String(value || '').replace(/\D/g, '').padStart(size, '0');
+
+  return digits.slice(0, size);
 }
 
 async function usernameExists(userModel, username, excludeUserId) {
@@ -54,17 +65,30 @@ async function usernameExists(userModel, username, excludeUserId) {
 }
 
 async function generateUniqueUsername({ userModel, fullName, excludeUserId = null, randomDigits = randomTwoDigits }) {
-  const baseUsername = buildUsernameBase(fullName);
-
-  if (!await usernameExists(userModel, baseUsername, excludeUserId)) {
-    return baseUsername;
-  }
+  const prefix = buildUsernamePrefix(fullName);
 
   const tried = new Set();
 
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    const suffix = String(randomDigits()).replace(/\D/g, '').padStart(2, '0').slice(-2);
-    const candidate = `${baseUsername}${suffix}`;
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const suffix = normalizeNumericSuffix(randomDigits(), 1);
+    const candidate = `${prefix}${suffix}`;
+
+    if (tried.has(candidate)) {
+      continue;
+    }
+
+    tried.add(candidate);
+
+    if (!await usernameExists(userModel, candidate, excludeUserId)) {
+      return candidate;
+    }
+  }
+
+  const shortPrefix = prefix.slice(0, 4);
+
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    const suffix = normalizeNumericSuffix(randomDigits(), 2);
+    const candidate = `${shortPrefix}${suffix}`;
 
     if (tried.has(candidate)) {
       continue;

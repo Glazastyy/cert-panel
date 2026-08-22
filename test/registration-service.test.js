@@ -214,6 +214,7 @@ describe('registration service', () => {
       },
       sessionSecret: 'test-secret',
       codeGenerator: () => 'ABC123',
+      usernameRandomDigits: () => '42',
       now: () => new Date('2026-08-22T12:00:00.000Z')
     });
 
@@ -235,9 +236,9 @@ describe('registration service', () => {
         code: 'ABC123'
       });
 
-      const user = await User.findOne({ where: { username: 'ANASILVA' } });
+      const user = await User.findOne({ where: { username: 'ANSIL4' } });
 
-      expect(result.username).toBe('ANASILVA');
+      expect(result.username).toBe('ANSIL4');
       expect(user.fullName).toBe('ANA SILVA');
       expect(user.email).toBe('ana@example.com');
       expect(user.role).toBe('user');

@@ -78,6 +78,7 @@ function createRegistrationService(options) {
     emailService,
     sessionSecret,
     codeGenerator = generateVerificationCode,
+    usernameRandomDigits,
     now = () => new Date()
   } = options;
 
@@ -185,7 +186,8 @@ function createRegistrationService(options) {
 
     const username = await generateUniqueUsername({
       userModel,
-      fullName: pendingRegistration.fullName
+      fullName: pendingRegistration.fullName,
+      randomDigits: usernameRandomDigits
     });
 
     const user = await userModel.create({

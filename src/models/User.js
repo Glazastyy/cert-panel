@@ -62,24 +62,24 @@ module.exports = (sequelize) => {
   };
 
   User.createDefaultAdmin = async function() {
-    const normalizedAdmin = await User.findOne({ where: { username: 'ADMINISTRADORDOSISTEMA' } });
+    const normalizedAdmin = await User.findOne({ where: { username: 'ADSIS0' } });
     
     if (normalizedAdmin) {
       return;
     }
 
-    const legacyAdmin = await User.findOne({ where: { username: { [Op.in]: ['admin'] } } });
+    const legacyAdmin = await User.findOne({ where: { username: { [Op.in]: ['admin', 'ADMINISTRADORDOSISTEMA'] } } });
 
     if (legacyAdmin) {
       await legacyAdmin.update({
-        username: 'ADMINISTRADORDOSISTEMA',
+        username: 'ADSIS0',
         fullName: 'ADMINISTRADOR DO SISTEMA'
       });
       return;
     }
 
     await User.create({
-      username: 'ADMINISTRADORDOSISTEMA',
+      username: 'ADSIS0',
       password: 'admin123',
       fullName: 'ADMINISTRADOR DO SISTEMA',
       email: 'admin@zerocert.local',

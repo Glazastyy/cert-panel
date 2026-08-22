@@ -45,7 +45,7 @@ describe('User model', () => {
       await User.createDefaultAdmin();
       await User.createDefaultAdmin();
 
-      const admins = await User.findAll({ where: { username: 'ADMINISTRADORDOSISTEMA' } });
+      const admins = await User.findAll({ where: { username: 'ADSIS0' } });
       expect(admins).toHaveLength(1);
       expect(admins[0].fullName).toBe('ADMINISTRADOR DO SISTEMA');
       expect(admins[0].role).toBe('admin');
