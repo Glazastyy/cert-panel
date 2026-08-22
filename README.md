@@ -104,11 +104,16 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 
 ## PostgreSQL em Container
 
-1. Crie um arquivo `.env` com base em `.env.postgres.example` e troque `POSTGRES_PASSWORD` e `DB_PASSWORD` por uma senha forte em produção.
+1. Rode o assistente para criar ou revisar o `.env`:
+   ```
+   ./rebuild.sh init
+   ```
+
+   Ele pergunta as configurações principais e gera chaves aleatórias quando `SESSION_SECRET`, `POSTGRES_PASSWORD` ou `DB_PASSWORD` ainda não existem.
 
 2. Suba o Postgres e a aplicação web:
    ```
-   bun run compose:up
+   ./rebuild.sh up
    ```
 
 3. Acesse a aplicação:
@@ -118,6 +123,20 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
    ```
 
 O `docker-compose.yml` sobe automaticamente o banco, aguarda o healthcheck do PostgreSQL e só então inicia a aplicação web. Para ambiente local, o Compose usa valores padrão, incluindo a senha `local-test`. Em produção, defina ao menos `POSTGRES_PASSWORD`, `DB_PASSWORD`, `APP_HTTP_PORT`, `APP_HTTPS_PORT` e as variáveis SMTP no `.env`.
+
+Comandos úteis:
+
+```
+./rebuild.sh config
+./rebuild.sh update
+./rebuild.sh reboot
+./rebuild.sh status
+./rebuild.sh logs
+./rebuild.sh down
+./rebuild.sh migrate
+```
+
+Use `config` para revisar configurações, `update` para executar `git pull --ff-only` e rebuild, `reboot` para reconstruir e reiniciar a web, `status` para ver os containers, `logs` para acompanhar logs em tempo real, `down` para parar os containers e `migrate` para migrar o SQLite legado para PostgreSQL.
 
 Se precisar rodar a aplicação fora do Compose, configure:
    ```

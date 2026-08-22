@@ -29,7 +29,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuração da sessão
 app.use(session({
-  secret: 'zerocert-icp-brasil-secret-key',
+  secret: process.env.SESSION_SECRET || 'zerocert-icp-brasil-secret-key',
   resave: false,
   saveUninitialized: true,
   cookie: { 
