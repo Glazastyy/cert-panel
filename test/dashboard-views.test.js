@@ -186,19 +186,7 @@ describe('dashboard views', () => {
         processing: 1,
         sent: 8,
         failed: 1
-      },
-      recentDeliveries: [
-        {
-          id: 10,
-          toEmail: 'usuario@example.com',
-          subject: 'Aviso',
-          status: 'pending',
-          attempts: 0,
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          sentAt: null,
-          lastError: null
-        }
-      ]
+      }
     });
 
     expect(html).toContain('Todos os usuários ativos');
@@ -207,11 +195,49 @@ describe('dashboard views', () => {
     expect(html).toContain('name="message"');
     expect(html).toContain('Enviar E-mail');
     expect(html).toContain('usuario@example.com');
+    expect(html).toContain('/dashboard/emails/queue');
+    expect(html).not.toContain('Aviso');
+  });
+
+  test('show detailed admin email queue page', () => {
+    const html = renderView('dashboard/email-queue.pug', {
+      title: 'Fila de E-mails',
+      user: {
+        id: 1,
+        fullName: 'Admin',
+        role: 'admin'
+      },
+      status: 'pending',
+      queueSummary: {
+        pending: 2,
+        processing: 1,
+        sent: 8,
+        failed: 1
+      },
+      deliveries: [
+        {
+          id: 10,
+          toEmail: 'usuario@example.com',
+          subject: 'Aviso',
+          messageFormat: 'html',
+          status: 'pending',
+          attempts: 0,
+          nextAttemptAt: new Date('2026-01-01T00:05:00Z'),
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          updatedAt: new Date('2026-01-01T00:01:00Z'),
+          sentAt: null,
+          lastError: null
+        }
+      ]
+    });
+
     expect(html).toContain('Fila de Envio');
     expect(html).toContain('Pendentes');
     expect(html).toContain('Processando');
     expect(html).toContain('Enviados');
     expect(html).toContain('Falhas');
     expect(html).toContain('Aviso');
+    expect(html).toContain('usuario@example.com');
+    expect(html).toContain('Próxima tentativa');
   });
 });

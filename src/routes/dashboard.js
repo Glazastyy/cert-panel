@@ -183,6 +183,35 @@ router.get('/emails', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
+router.get('/emails/queue', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const EmailDelivery = sequelize.models.EmailDelivery;
+    const allowedStatuses = ['all', 'pending', 'processing', 'sent', 'failed'];
+    const status = allowedStatuses.includes(req.query.status) ? req.query.status : 'all';
+    const where = status === 'all' ? {} : { status };
+    const queueState = await loadEmailQueueState();
+    const deliveries = await EmailDelivery.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      limit: 100
+    });
+
+    res.render('dashboard/email-queue', {
+      title: 'Fila de E-mails - ZeroCert ICP-Brasil',
+      status,
+      deliveries,
+      ...queueState
+    });
+  } catch (error) {
+    console.error('Erro ao carregar fila de e-mails:', error);
+    res.status(500).render('error', {
+      title: 'Erro',
+      message: 'Ocorreu um erro ao carregar a fila de e-mails.',
+      error: { status: 500 }
+    });
+  }
+});
+
 router.post('/emails', isAuthenticated, isAdmin, async (req, res) => {
   const User = sequelize.models.User;
   const users = await User.findAll({
