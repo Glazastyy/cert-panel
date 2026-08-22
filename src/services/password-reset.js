@@ -53,7 +53,7 @@ function createPasswordResetService(options) {
       }
     });
 
-    if (!user) {
+    if (!user || user.role === 'admin') {
       return { sent: false };
     }
 

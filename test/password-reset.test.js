@@ -100,6 +100,43 @@ describe('password reset service', () => {
     }
   });
 
+  test('does not send password reset links or create tokens for admins', async () => {
+    const { sequelize, User, PasswordResetToken } = await createModels();
+    const sent = [];
+    const service = createPasswordResetService({
+      userModel: User,
+      resetTokenModel: PasswordResetToken,
+      emailService: {
+        sendPasswordResetLink: async (payload) => {
+          sent.push(payload);
+        }
+      },
+      tokenGenerator: () => 'raw-token',
+      now: () => new Date('2026-08-22T12:00:00.000Z')
+    });
+
+    try {
+      await User.create({
+        username: 'ADSIS0',
+        password: 'admin-password',
+        fullName: 'ADMINISTRADOR DO SISTEMA',
+        email: 'admin@example.com',
+        role: 'admin'
+      });
+
+      const result = await service.requestPasswordReset({
+        email: 'admin@example.com',
+        baseUrl: 'https://test-pcert.zerocert.com.br'
+      });
+
+      expect(result.sent).toBe(false);
+      expect(sent).toHaveLength(0);
+      expect(await PasswordResetToken.count()).toBe(0);
+    } finally {
+      await sequelize.close();
+    }
+  });
+
   test('resets password once with a valid non-expired token', async () => {
     const { sequelize, User, PasswordResetToken } = await createModels();
     const service = createPasswordResetService({
