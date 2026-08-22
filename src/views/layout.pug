@@ -1,5 +1,5 @@
 doctype html
-html(lang='pt-BR')
+html(lang='pt-BR', data-bs-theme='light')
   head
     meta(charset='utf-8')
     meta(name='viewport', content='width=device-width, initial-scale=1')
@@ -47,8 +47,13 @@ html(lang='pt-BR')
                 li.nav-item
                   a.nav-link(href='/dashboard/certificate-requests') Solicitações
                 li.nav-item
+                  a.nav-link(href='/dashboard/emails') E-mails
+                li.nav-item
                   a.nav-link(href='/dashboard/users') Usuários
           ul.navbar-nav
+            li.nav-item.d-flex.align-items-center.me-2
+              button#themeToggle.btn.btn-outline-light.btn-sm(type='button', aria-label='Alternar modo noturno', title='Alternar modo noturno')
+                i.bi.bi-moon-stars
             if user
               li.nav-item.dropdown
                 a.nav-link.dropdown-toggle(href='#', role='button', data-bs-toggle='dropdown')

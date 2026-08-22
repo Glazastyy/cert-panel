@@ -6,12 +6,29 @@
   --secondary-color: #0077cc;
   --accent-color: #00a8e8;
   --background-color: #f5f5f5;
+  --surface-color: #fff;
   --text-color: #333;
+  --muted-text-color: #6c757d;
   --border-color: #ddd;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --table-hover-color: rgba(0, 168, 232, 0.1);
   --success-color: #28a745;
   --warning-color: #ffc107;
   --danger-color: #dc3545;
   --info-color: #17a2b8;
+}
+
+[data-bs-theme="dark"] {
+  --primary-color: #0b5fa5;
+  --secondary-color: #1687d9;
+  --accent-color: #38bdf8;
+  --background-color: #101418;
+  --surface-color: #171d23;
+  --text-color: #e6edf3;
+  --muted-text-color: #a8b3bd;
+  --border-color: #33404d;
+  --shadow-color: rgba(0, 0, 0, 0.35);
+  --table-hover-color: rgba(56, 189, 248, 0.12);
 }
 
 /* Estilos gerais */
@@ -19,6 +36,10 @@ body {
   font-family: 'Courier New', Courier, monospace;
   background-color: var(--background-color);
   color: var(--text-color);
+}
+
+a {
+  color: var(--secondary-color);
 }
 
 /* Navbar */
@@ -37,7 +58,9 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 0;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 .card-header {
@@ -62,6 +85,18 @@ body {
 .form-control {
   border-radius: 0;
   border: 1px solid var(--border-color);
+  background-color: var(--surface-color);
+  color: var(--text-color);
+}
+
+.form-control::placeholder {
+  color: var(--muted-text-color);
+}
+
+.form-select {
+  background-color: var(--surface-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
 }
 
 .form-control:focus {
@@ -72,6 +107,9 @@ body {
 /* Tabelas */
 .table {
   border: 1px solid var(--border-color);
+  --bs-table-bg: var(--surface-color);
+  --bs-table-color: var(--text-color);
+  --bs-table-border-color: var(--border-color);
 }
 
 .table thead th {
@@ -81,7 +119,26 @@ body {
 }
 
 .table-hover tbody tr:hover {
-  background-color: rgba(0, 168, 232, 0.1);
+  background-color: var(--table-hover-color);
+}
+
+.modal-content,
+.dropdown-menu,
+.list-group-item {
+  background-color: var(--surface-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+.dropdown-item,
+.text-muted {
+  color: var(--muted-text-color) !important;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--table-hover-color);
+  color: var(--text-color) !important;
 }
 
 /* Alertas */

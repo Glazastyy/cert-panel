@@ -10,7 +10,8 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 - Validação de certificados por número de série
 - Revogação de certificados
 - Download de certificados nos formatos PEM e PKCS#12 (P12)
-- Banco de dados SQLite para armazenamento
+- Banco de dados PostgreSQL para armazenamento
+- Migração segura a partir do banco SQLite legado
 - Suporte a HTTPS com certificados SSL autoassinados
 
 ## Requisitos
@@ -22,7 +23,7 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 
 1. Clone o repositório:
    ```
-   git clone https://github.com/RibasSu/cert-panel.git
+   git clone https://github.com/Glazastyy/cert-panel.git
    cd cert-panel
    ```
 
@@ -47,10 +48,24 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
    SSL_IPS=127.0.0.1
    HTTP_PORT=3000
    HTTPS_PORT=3443
-   
+
    # Configurações da Aplicação (opcionais)
    # SESSION_SECRET=sua_chave_secreta_para_sessoes
    # DB_PATH=src/data/database.sqlite
+   # DB_DIALECT=postgres
+   # DB_HOST=localhost
+   # DB_PORT=5432
+   # DB_NAME=zerocert
+   # DB_USER=zerocert
+   # DB_PASSWORD=sua_senha_segura
+
+   # Configurações de E-mail (SMTP)
+   # SMTP_HOST=smtp.example.com
+   # SMTP_PORT=587
+   # SMTP_SECURE=false
+   # SMTP_USER=usuario_smtp
+   # SMTP_PASSWORD=senha_smtp
+   # EMAIL_FROM=ZeroCert <no-reply@seudominio.com>
    ```
    
    **Importante**: Certifique-se de que o diretório especificado em `SSL_DIRECTORY` existe e tem permissões de escrita. O sistema irá gerar automaticamente os certificados SSL necessários para HTTPS neste diretório.
@@ -82,9 +97,52 @@ O ZeroCert é um sistema que simula a Infraestrutura de Chaves Públicas Brasile
 │   ├── views/           # Templates Pug
 │   └── index.js         # Ponto de entrada da aplicação
 ├── .env                 # Variáveis de ambiente
+├── docker-compose.yml
 ├── package.json
 └── README.md
 ```
+
+## PostgreSQL em Container
+
+1. Crie um arquivo `.env` com base em `.env.postgres.example` e troque `POSTGRES_PASSWORD` e `DB_PASSWORD` por uma senha forte.
+
+2. Suba o Postgres:
+   ```
+   bun run db:postgres:up
+   ```
+
+3. Configure a aplicação para usar Postgres:
+   ```
+   DB_DIALECT=postgres
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=zerocert
+   DB_USER=zerocert
+   DB_PASSWORD=sua_senha_segura
+   ```
+
+## Migração de SQLite para PostgreSQL
+
+Antes da migração, pare a aplicação em produção para evitar novas escritas no SQLite durante a cópia.
+
+1. Faça backup do SQLite atual:
+   ```
+   cp src/data/database.sqlite src/data/database.sqlite.backup
+   ```
+
+2. Suba um Postgres vazio:
+   ```
+   bun run db:postgres:up
+   ```
+
+3. Execute a migração:
+   ```
+   SQLITE_DB_PATH=src/data/database.sqlite DB_DIALECT=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=zerocert DB_USER=zerocert DB_PASSWORD=sua_senha_segura bun run db:migrate:sqlite-to-postgres
+   ```
+
+4. Verifique o resumo impresso pelo script e só então inicie a aplicação apontando para Postgres.
+
+O script preserva IDs, relacionamentos, certificados, usuários, autoridades certificadoras e solicitações. Por padrão, ele aborta se o destino já tiver registros, evitando misturar dados de uma migração parcial com dados existentes.
 
 ## Uso
 
@@ -111,6 +169,19 @@ Recomenda-se alterar a senha após o primeiro login.
 2. Insira o número de série do certificado
 3. Clique em "Validar"
 
+### Envios de E-mail
+
+Administradores podem acessar "E-mails" no painel para enviar uma mensagem para todos os usuários ativos ou apenas usuários específicos.
+
+O sistema também envia notificações automáticas quando:
+
+- um usuário solicita um certificado
+- uma solicitação é aprovada
+- uma solicitação é rejeitada
+- um usuário faz login
+
+As notificações automáticas não bloqueiam o fluxo do usuário se o SMTP estiver indisponível ou incompleto. Já o envio manual pelo painel exige configuração SMTP válida.
+
 ## Segurança
 
 **IMPORTANTE**: Este sistema é destinado APENAS para fins de teste e desenvolvimento. Os certificados emitidos NÃO são reconhecidos oficialmente e NÃO devem ser utilizados em ambientes de produção.
@@ -119,7 +190,7 @@ Recomenda-se alterar a senha após o primeiro login.
 
 - **Backend**: Node.js, Express
 - **Frontend**: Bootstrap, Pug
-- **Banco de Dados**: SQLite
+- **Banco de Dados**: PostgreSQL, SQLite legado para migração
 - **Criptografia**: node-forge, OpenSSL
 - **Ambiente**: dotenv para configuração de variáveis de ambiente
 

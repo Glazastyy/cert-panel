@@ -1,0 +1,41 @@
+extends ../layout
+
+block content
+  .d-flex.justify-content-between.align-items-center.mb-4
+    h2 Enviar E-mail
+    a.btn.btn-secondary(href='/dashboard')
+      i.bi.bi-arrow-left.me-2
+      | Voltar
+
+  .card
+    .card-header.bg-primary.text-white
+      h5.mb-0 Nova Mensagem
+    .card-body
+      form(action='/dashboard/emails', method='POST')
+        .mb-3
+          label.form-label Destinatários
+          .form-check
+            input#recipientModeAll.form-check-input(type='radio', name='recipientMode', value='all', checked=!formData || formData.recipientMode !== 'selected')
+            label.form-check-label(for='recipientModeAll') Todos os usuários ativos
+          .form-check
+            input#recipientModeSelected.form-check-input(type='radio', name='recipientMode', value='selected', checked=formData && formData.recipientMode === 'selected')
+            label.form-check-label(for='recipientModeSelected') Usuários específicos
+
+        .mb-3
+          label.form-label(for='userIds') Usuários
+          select#userIds.form-select(name='userIds', multiple, size='8')
+            each targetUser in users
+              option(value=targetUser.id, selected=formData && formData.userIds && [].concat(formData.userIds).map(String).includes(String(targetUser.id))) #{targetUser.fullName} (#{targetUser.email})
+
+        .mb-3
+          label.form-label(for='subject') Assunto
+          input#subject.form-control(type='text', name='subject', value=formData ? formData.subject : '', maxlength='160', required)
+
+        .mb-3
+          label.form-label(for='message') Mensagem
+          textarea#message.form-control(name='message', rows='8', maxlength='5000', required)= formData ? formData.message : ''
+
+        .d-flex.justify-content-end
+          button.btn.btn-primary(type='submit')
+            i.bi.bi-send.me-2
+            | Enviar E-mail

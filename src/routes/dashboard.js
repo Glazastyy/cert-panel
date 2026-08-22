@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../database/db');
 const { createECPFCertificate, createECNPJCertificate } = require('../services/ca');
+const { buildRecipientList, emailService } = require('../services/email');
 
 // Middleware para verificar se o usuário está autenticado
 const isAuthenticated = (req, res, next) => {
@@ -134,6 +135,62 @@ router.get('/certificate-requests', isAuthenticated, isAdmin, async (req, res) =
   }
 });
 
+router.get('/emails', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const User = sequelize.models.User;
+    const users = await User.findAll({
+      attributes: ['id', 'username', 'fullName', 'email', 'active'],
+      where: { active: true },
+      order: [['fullName', 'ASC']]
+    });
+
+    res.render('dashboard/emails', {
+      title: 'Enviar E-mail - ZeroCert ICP-Brasil',
+      users
+    });
+  } catch (error) {
+    console.error('Erro ao carregar painel de e-mails:', error);
+    res.status(500).render('error', {
+      title: 'Erro',
+      message: 'Ocorreu um erro ao carregar o painel de e-mails.',
+      error: { status: 500 }
+    });
+  }
+});
+
+router.post('/emails', isAuthenticated, isAdmin, async (req, res) => {
+  const User = sequelize.models.User;
+  const users = await User.findAll({
+    attributes: ['id', 'username', 'fullName', 'email', 'active'],
+    where: { active: true },
+    order: [['fullName', 'ASC']]
+  });
+
+  try {
+    const selectedUserIds = Array.isArray(req.body.userIds) ? req.body.userIds : req.body.userIds ? [req.body.userIds] : [];
+    const recipients = buildRecipientList(users, req.body.recipientMode, selectedUserIds);
+
+    await emailService.sendManualMessage({
+      recipients,
+      subject: req.body.subject,
+      message: req.body.message
+    });
+
+    res.render('dashboard/emails', {
+      title: 'Enviar E-mail - ZeroCert ICP-Brasil',
+      users,
+      success: `E-mail enviado para ${recipients.length} destinatário(s).`
+    });
+  } catch (error) {
+    res.render('dashboard/emails', {
+      title: 'Enviar E-mail - ZeroCert ICP-Brasil',
+      users,
+      error: error.message || 'Ocorreu um erro ao enviar o e-mail.',
+      formData: req.body
+    });
+  }
+});
+
 router.post('/certificate-requests/:id/approve', isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { p12Password, confirmP12Password } = req.body;
@@ -184,6 +241,14 @@ router.post('/certificate-requests/:id/approve', isAuthenticated, isAdmin, async
       certificateId: certificate.id
     });
 
+    const User = sequelize.models.User;
+    const requestUser = await User.findByPk(request.userId);
+    await emailService.sendNotification({
+      to: requestUser.email,
+      subject: 'Solicitação de certificado aprovada',
+      message: `Olá, ${requestUser.fullName}.\n\nSua solicitação de certificado ${request.type} foi aprovada e o certificado já está disponível no painel ZeroCert.\n\nNúmero de série: ${certificate.serialNumber}`
+    });
+
     req.session.flashMessage = {
       type: 'success',
       text: 'Solicitação aprovada e certificado emitido com sucesso'
@@ -227,6 +292,14 @@ router.post('/certificate-requests/:id/reject', isAuthenticated, isAdmin, async 
       rejectionReason,
       reviewedAt: new Date(),
       reviewedBy: req.session.user.id
+    });
+
+    const User = sequelize.models.User;
+    const requestUser = await User.findByPk(request.userId);
+    await emailService.sendNotification({
+      to: requestUser.email,
+      subject: 'Solicitação de certificado rejeitada',
+      message: `Olá, ${requestUser.fullName}.\n\nSua solicitação de certificado ${request.type} foi rejeitada.\n\nMotivo: ${rejectionReason}`
     });
 
     req.session.flashMessage = {

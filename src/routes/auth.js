@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../database/db');
+const { emailService } = require('../services/email');
 
 // Rota para a página de login
 router.get('/login', (req, res) => {
@@ -37,6 +38,11 @@ router.post('/login', async (req, res) => {
     
     // Atualizar a data do último login
     await user.update({ lastLogin: new Date() });
+    await emailService.sendNotification({
+      to: user.email,
+      subject: 'Novo login no ZeroCert',
+      message: `Olá, ${user.fullName}.\n\nUm login foi realizado na sua conta ZeroCert.\n\nUsuário: ${user.username}\nData e hora: ${new Date().toLocaleString('pt-BR')}`
+    });
     
     // Armazenar o usuário na sessão (excluindo a senha)
     req.session.user = {

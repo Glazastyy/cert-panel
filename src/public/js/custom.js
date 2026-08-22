@@ -1,8 +1,36 @@
-// Funções JavaScript personalizadas
-
-// Inicialização quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
-  // Inicializa tooltips do Bootstrap
+  const themeStorageKey = 'zerocert-theme';
+  const themeToggle = document.getElementById('themeToggle');
+  const themeIcon = themeToggle ? themeToggle.querySelector('i') : null;
+  const storedTheme = localStorage.getItem(themeStorageKey);
+  const preferredTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+  function applyTheme(theme) {
+    const normalizedTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-bs-theme', normalizedTheme);
+
+    if (themeIcon) {
+      themeIcon.classList.toggle('bi-moon-stars', normalizedTheme === 'light');
+      themeIcon.classList.toggle('bi-sun', normalizedTheme === 'dark');
+    }
+
+    if (themeToggle) {
+      themeToggle.setAttribute('aria-pressed', normalizedTheme === 'dark' ? 'true' : 'false');
+      themeToggle.setAttribute('title', normalizedTheme === 'dark' ? 'Alternar modo claro' : 'Alternar modo noturno');
+    }
+  }
+
+  applyTheme(storedTheme || preferredTheme);
+
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function() {
+      const currentTheme = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(themeStorageKey, nextTheme);
+      applyTheme(nextTheme);
+    });
+  }
+
   var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../database/db');
 const { createECPFCertificate, createECNPJCertificate, revokeCertificate } = require('../services/ca');
+const { emailService } = require('../services/email');
 const fs = require('fs');
 const path = require('path');
 
@@ -68,6 +69,12 @@ router.post('/request/ecpf', isAuthenticated, async (req, res) => {
       userId: req.session.user.id
     });
 
+    await emailService.sendNotification({
+      to: req.session.user.email,
+      subject: 'Solicitação de certificado recebida',
+      message: `Olá, ${req.session.user.fullName}.\n\nRecebemos sua solicitação de certificado e-CPF. Ela será analisada pela administração do ZeroCert.`
+    });
+
     req.session.flashMessage = {
       type: 'success',
       text: 'Solicitação de certificado e-CPF enviada para aprovação'
@@ -122,6 +129,12 @@ router.post('/request/ecnpj', isAuthenticated, async (req, res) => {
         city
       },
       userId: req.session.user.id
+    });
+
+    await emailService.sendNotification({
+      to: req.session.user.email,
+      subject: 'Solicitação de certificado recebida',
+      message: `Olá, ${req.session.user.fullName}.\n\nRecebemos sua solicitação de certificado e-CNPJ. Ela será analisada pela administração do ZeroCert.`
     });
 
     req.session.flashMessage = {

@@ -1,4 +1,5 @@
 const { describe, expect, test } = require('bun:test');
+const fs = require('fs');
 const path = require('path');
 const pug = require('pug');
 
@@ -24,6 +25,34 @@ describe('dashboard views', () => {
     });
 
     expect(html).toContain('/css/bootstrap-icons.min.css');
+  });
+
+  test('render theme toggle controls in the shared layout', () => {
+    const html = renderView('dashboard/users.pug', {
+      title: 'Gerenciar Usuários',
+      user: {
+        id: 1,
+        fullName: 'Admin',
+        role: 'admin'
+      },
+      users: []
+    });
+
+    expect(html).toContain('data-bs-theme="light"');
+    expect(html).toContain('id="themeToggle"');
+    expect(html).toContain('aria-label="Alternar modo noturno"');
+    expect(html).toContain('bi-moon-stars');
+  });
+
+  test('ship persisted dark mode assets', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'custom.css'), 'utf8');
+    const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'custom.js'), 'utf8');
+
+    expect(css).toContain('[data-bs-theme="dark"]');
+    expect(css).toContain('--background-color');
+    expect(js).toContain('zerocert-theme');
+    expect(js).toContain('localStorage');
+    expect(js).toContain('data-bs-theme');
   });
 
   test('show visible action labels in users list', () => {
@@ -130,5 +159,30 @@ describe('dashboard views', () => {
     expect(html).toContain('Rejeitar');
     expect(html).toContain('/dashboard/certificate-requests/8/approve');
     expect(html).toContain('/dashboard/certificate-requests/8/reject');
+  });
+
+  test('show admin email sending panel controls', () => {
+    const html = renderView('dashboard/emails.pug', {
+      title: 'Enviar E-mail',
+      user: {
+        id: 1,
+        fullName: 'Admin',
+        role: 'admin'
+      },
+      users: [
+        {
+          id: 2,
+          fullName: 'Usuário Teste',
+          email: 'usuario@example.com'
+        }
+      ]
+    });
+
+    expect(html).toContain('Todos os usuários ativos');
+    expect(html).toContain('Usuários específicos');
+    expect(html).toContain('name="subject"');
+    expect(html).toContain('name="message"');
+    expect(html).toContain('Enviar E-mail');
+    expect(html).toContain('usuario@example.com');
   });
 });
