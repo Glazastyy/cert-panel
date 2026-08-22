@@ -19,6 +19,7 @@ class RegistrationInputError extends Error {
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
 const REGISTRATION_TTL_MS = 15 * 60 * 1000;
+const PASSWORD_REQUIREMENTS_MESSAGE = 'A senha deve ter no mínimo 8 caracteres, 2 letras maiúsculas, 3 letras minúsculas e 3 caracteres especiais';
 
 function normalizeCode(code) {
   return String(code || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -51,6 +52,23 @@ function safeCompare(left, right) {
   }
 
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function countMatches(value, pattern) {
+  const matches = String(value || '').match(pattern);
+
+  return matches ? matches.length : 0;
+}
+
+function validateRegistrationPassword(password) {
+  const value = String(password || '');
+  const uppercaseCount = countMatches(value, /[A-Z]/g);
+  const lowercaseCount = countMatches(value, /[a-z]/g);
+  const specialCount = countMatches(value, /[^A-Za-z0-9\s]/g);
+
+  if (value.length < 8 || uppercaseCount < 2 || lowercaseCount < 3 || specialCount < 3) {
+    throw new RegistrationInputError(PASSWORD_REQUIREMENTS_MESSAGE);
+  }
 }
 
 function getPublicFormData(input) {
@@ -97,6 +115,16 @@ function createRegistrationService(options) {
 
     if (password !== confirmPassword) {
       throw new RegistrationInputError('As senhas não coincidem', formData);
+    }
+
+    try {
+      validateRegistrationPassword(password);
+    } catch (error) {
+      if (error instanceof RegistrationInputError) {
+        throw new RegistrationInputError(error.message, formData);
+      }
+
+      throw error;
     }
 
     const existingEmail = await userModel.findOne({
@@ -215,5 +243,6 @@ module.exports = {
   RegistrationInputError,
   createRegistrationService,
   generateVerificationCode,
-  normalizeCode
+  normalizeCode,
+  validateRegistrationPassword
 };

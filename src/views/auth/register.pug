@@ -18,7 +18,8 @@ block content
             
             .mb-3
               label.form-label(for='password') Senha
-              input#password.form-control(type='password', name='password', required)
+              input#password.form-control(type='password', name='password', minlength='8', pattern='(?=(?:.*[A-Z]){2,})(?=(?:.*[a-z]){3,})(?=(?:.*[^A-Za-z0-9\\s]){3,}).{8,}', aria-describedby='passwordHelp', required)
+              #passwordHelp.form-text Mínimo de 8 caracteres, 2 letras maiúsculas, 3 letras minúsculas e 3 caracteres especiais.
             
             .mb-3
               label.form-label(for='confirmPassword') Confirmar Senha
