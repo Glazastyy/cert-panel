@@ -34,18 +34,6 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
-// Middleware para verificar se o usuário é administrador ou operador
-const isAdminOrOperator = (req, res, next) => {
-  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'operator')) {
-    return res.status(403).render('error', {
-      title: 'Acesso Negado',
-      message: 'Você não tem permissão para acessar esta página.',
-      error: { status: 403 }
-    });
-  }
-  next();
-};
-
 const dateToDDMMYYYY = (value) => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value;
@@ -78,8 +66,7 @@ router.get('/', isAuthenticated, async (req, res) => {
     const Certificate = sequelize.models.Certificate;
     const User = sequelize.models.User;
     
-    // Estatísticas para administradores e operadores
-    if (req.session.user.role === 'admin' || req.session.user.role === 'operator') {
+    if (req.session.user.role === 'admin') {
       const CertificateRequest = sequelize.models.CertificateRequest;
       const totalCertificates = await Certificate.count();
       const activeCertificates = await Certificate.count({ where: { revoked: false } });
@@ -693,8 +680,8 @@ router.post('/users/delete/:id', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
-// Rota para visualizar todos os certificados (admin e operador)
-router.get('/certificates', isAuthenticated, isAdminOrOperator, async (req, res) => {
+// Rota para visualizar todos os certificados
+router.get('/certificates', isAuthenticated, isAdmin, async (req, res) => {
   try {
     const Certificate = sequelize.models.Certificate;
     const User = sequelize.models.User;
