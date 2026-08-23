@@ -5,6 +5,10 @@ const { createECPFCertificate, createECNPJCertificate } = require('../services/c
 const { buildRecipientUsers, emailService } = require('../services/email');
 const { createEmailQueueService } = require('../services/email-queue');
 const {
+  formatCertificateRequestMetadata,
+  formatCertificateRequestPayload
+} = require('../services/certificate-request-metadata');
+const {
   UserIdentityError,
   generateUniqueUsername,
   normalizeFullName
@@ -153,6 +157,48 @@ router.get('/certificate-requests', isAuthenticated, isAdmin, async (req, res) =
     res.status(500).render('error', {
       title: 'Erro',
       message: 'Ocorreu um erro ao carregar as solicitações de certificado.',
+      error: { status: 500 }
+    });
+  }
+});
+
+router.get('/certificate-requests/:id', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const CertificateRequest = sequelize.models.CertificateRequest;
+    const User = sequelize.models.User;
+    const request = await CertificateRequest.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          attributes: ['username', 'fullName', 'email']
+        },
+        {
+          model: User,
+          as: 'Reviewer',
+          attributes: ['username', 'fullName', 'email']
+        }
+      ]
+    });
+
+    if (!request) {
+      req.session.flashMessage = {
+        type: 'error',
+        text: 'Solicitação não encontrada'
+      };
+      return res.redirect('/dashboard/certificate-requests');
+    }
+
+    res.render('dashboard/certificate-request-detail', {
+      title: `Solicitação #${request.id} - ZeroCert ICP-Brasil`,
+      request,
+      payloadRows: formatCertificateRequestPayload(request.payload),
+      metadataRows: formatCertificateRequestMetadata(request.payload ? request.payload.metadata : null)
+    });
+  } catch (error) {
+    console.error('Erro ao carregar detalhes da solicitação:', error);
+    res.status(500).render('error', {
+      title: 'Erro',
+      message: 'Ocorreu um erro ao carregar os detalhes da solicitação.',
       error: { status: 500 }
     });
   }

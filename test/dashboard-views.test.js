@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const pug = require('pug');
 const { formatCertificateUsage } = require('../src/services/certificate-formatting');
+const {
+  formatCertificateRequestMetadata,
+  formatCertificateRequestPayload
+} = require('../src/services/certificate-request-metadata');
 
 const viewsPath = path.join(__dirname, '..', 'src', 'views');
 
@@ -279,8 +283,82 @@ describe('dashboard views', () => {
 
     expect(html).toContain('Aprovar');
     expect(html).toContain('Rejeitar');
+    expect(html).toContain('Detalhes');
+    expect(html).toContain('/dashboard/certificate-requests/8');
     expect(html).toContain('/dashboard/certificate-requests/8/approve');
     expect(html).toContain('/dashboard/certificate-requests/8/reject');
+  });
+
+  test('shows certificate request submission confirmation page', () => {
+    const html = renderView('certificates/request-submitted.pug', {
+      title: 'Solicitação Enviada',
+      user: {
+        id: 3,
+        fullName: 'ANA SILVA',
+        role: 'user'
+      },
+      request: {
+        id: 12,
+        type: 'e-CPF',
+        createdAt: new Date('2026-08-23T12:00:00Z')
+      }
+    });
+
+    expect(html).toContain('Solicitação recebida');
+    expect(html).toContain('será analisada pela equipe');
+    expect(html).toContain('#12');
+  });
+
+  test('shows certificate request details with submitted data and technical metadata', () => {
+    const request = {
+      id: 8,
+      type: 'e-CPF',
+      status: 'pending',
+      payload: {
+        name: 'ANA SILVA',
+        cpf: '52998224725',
+        birthDate: '2000-08-23',
+        socialSecurity: '',
+        email: 'ana@example.com',
+        state: 'SP',
+        city: 'São Paulo',
+        metadata: {
+          ip: '10.0.0.1',
+          userAgent: 'Mozilla/5.0',
+          device: 'Desktop',
+          method: 'POST',
+          path: '/certificates/request/ecpf'
+        }
+      },
+      createdAt: new Date('2026-08-23T12:00:00Z'),
+      reviewedAt: null,
+      rejectionReason: null,
+      User: {
+        username: 'ANSIL4',
+        fullName: 'ANA SILVA',
+        email: 'ana@example.com'
+      },
+      Reviewer: null
+    };
+    const html = renderView('dashboard/certificate-request-detail.pug', {
+      title: 'Solicitação #8',
+      user: {
+        id: 1,
+        fullName: 'Admin',
+        role: 'admin'
+      },
+      request,
+      payloadRows: formatCertificateRequestPayload(request.payload),
+      metadataRows: formatCertificateRequestMetadata(request.payload.metadata)
+    });
+
+    expect(html).toContain('Dados Enviados no Formulário');
+    expect(html).toContain('ANA SILVA');
+    expect(html).toContain('52998224725');
+    expect(html).toContain('Dados Técnicos do Envio');
+    expect(html).toContain('10.0.0.1');
+    expect(html).toContain('Mozilla/5.0');
+    expect(html).toContain('Desktop');
   });
 
   test('show admin email sending panel controls', () => {

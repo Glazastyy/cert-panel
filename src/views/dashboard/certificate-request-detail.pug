@@ -1,0 +1,101 @@
+extends ../layout
+
+block content
+  .d-flex.justify-content-between.align-items-center.mb-4
+    h2.mb-0 Solicitação ##{request.id}
+    a.btn.btn-secondary(href='/dashboard/certificate-requests')
+      i.bi.bi-arrow-left.me-2
+      | Voltar
+
+  .row
+    .col-lg-8.mb-4
+      .card
+        .card-header.bg-primary.text-white
+          h5.mb-0 Dados Enviados no Formulário
+        .card-body
+          dl.row.mb-0
+            each row in payloadRows
+              dt.col-sm-4 #{row[0]}
+              dd.col-sm-8.text-break #{row[1]}
+
+    .col-lg-4.mb-4
+      .card
+        .card-header.bg-primary.text-white
+          h5.mb-0 Status
+        .card-body
+          dl.mb-0
+            dt Tipo
+            dd #{request.type}
+            dt Situação
+            dd
+              case request.status
+                when 'pending'
+                  span.badge.bg-warning.text-dark Pendente
+                when 'approved'
+                  span.badge.bg-success Aprovada
+                when 'rejected'
+                  span.badge.bg-danger Rejeitada
+            dt Solicitante
+            dd
+              | #{request.User.fullName}
+              br
+              small.text-muted #{request.User.email}
+              br
+              small.text-muted #{request.User.username}
+            dt Enviada em
+            dd #{request.createdAt.toLocaleString('pt-BR')}
+            if request.Reviewer
+              dt Revisada por
+              dd
+                | #{request.Reviewer.fullName}
+                br
+                small.text-muted #{request.Reviewer.email}
+            if request.reviewedAt
+              dt Revisada em
+              dd #{request.reviewedAt.toLocaleString('pt-BR')}
+            if request.rejectionReason
+              dt Motivo da Rejeição
+              dd.text-break #{request.rejectionReason}
+
+  .card.mb-4
+    .card-header.bg-primary.text-white
+      h5.mb-0 Dados Técnicos do Envio
+    .card-body
+      if metadataRows && metadataRows.length > 0
+        dl.row.mb-0
+          each row in metadataRows
+            dt.col-sm-3 #{row[0]}
+            dd.col-sm-9.text-break #{row[1]}
+      else
+        p.text-muted.mb-0 Esta solicitação não possui metadados técnicos registrados.
+
+  if request.status === 'pending'
+    .row
+      .col-lg-6.mb-4
+        .card
+          .card-header.bg-success.text-white
+            h5.mb-0 Aprovar Solicitação
+          .card-body
+            form(action=`/dashboard/certificate-requests/${request.id}/approve`, method='POST')
+              .mb-3
+                label.form-label(for='p12Password') Senha do Certificado
+                input#p12Password.form-control(type='password', name='p12Password', required)
+              .mb-3
+                label.form-label(for='confirmP12Password') Confirmar Senha
+                input#confirmP12Password.form-control(type='password', name='confirmP12Password', required)
+              button.btn.btn-success(type='submit')
+                i.bi.bi-check-circle.me-2
+                | Aprovar e Emitir
+
+      .col-lg-6.mb-4
+        .card
+          .card-header.bg-danger.text-white
+            h5.mb-0 Rejeitar Solicitação
+          .card-body
+            form(action=`/dashboard/certificate-requests/${request.id}/reject`, method='POST')
+              .mb-3
+                label.form-label(for='rejectionReason') Motivo da Rejeição
+                textarea#rejectionReason.form-control(name='rejectionReason', rows='5', required)
+              button.btn.btn-danger(type='submit')
+                i.bi.bi-x-circle.me-2
+                | Rejeitar

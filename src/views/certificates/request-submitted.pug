@@ -1,0 +1,29 @@
+extends ../layout
+
+block content
+  .row.justify-content-center
+    .col-md-8.col-lg-7
+      .card.border-primary
+        .card-header.bg-primary.text-white
+          h4.mb-0 Solicitação Enviada
+        .card-body
+          .alert.alert-success
+            h5.mb-2 Solicitação recebida
+            p.mb-0 Sua solicitação de certificado #{request.type} foi enviada e será analisada pela equipe.
+
+          dl.row.mb-4
+            dt.col-sm-4 Protocolo
+            dd.col-sm-8 ##{request.id}
+            dt.col-sm-4 Status
+            dd.col-sm-8
+              span.badge.bg-warning.text-dark Pendente
+            dt.col-sm-4 Enviada em
+            dd.col-sm-8 #{request.createdAt.toLocaleString('pt-BR')}
+
+          .d-flex.justify-content-between
+            a.btn.btn-secondary(href='/dashboard')
+              i.bi.bi-arrow-left.me-2
+              | Voltar ao Painel
+            a.btn.btn-primary(href='/dashboard')
+              i.bi.bi-list-check.me-2
+              | Meus Certificados

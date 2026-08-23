@@ -8,6 +8,7 @@ const {
   validateEcnpjCertificateRequest,
   validateEcpfCertificateRequest
 } = require('../services/certificate-request-validation');
+const { buildCertificateRequestMetadata } = require('../services/certificate-request-metadata');
 const { emailService } = require('../services/email');
 const { emailValidator } = require('../services/email-validation');
 const fs = require('fs');
@@ -56,6 +57,33 @@ router.get('/request/ecpf', isAuthenticated, (req, res) => {
   });
 });
 
+router.get('/request/submitted/:id', isAuthenticated, async (req, res) => {
+  try {
+    const CertificateRequest = sequelize.models.CertificateRequest;
+    const request = await CertificateRequest.findByPk(req.params.id);
+
+    if (!request || request.userId !== req.session.user.id) {
+      req.session.flashMessage = {
+        type: 'error',
+        text: 'Solicitação não encontrada'
+      };
+      return res.redirect('/dashboard');
+    }
+
+    res.render('certificates/request-submitted', {
+      title: 'Solicitação Enviada - ZeroCert ICP-Brasil',
+      request
+    });
+  } catch (error) {
+    console.error('Erro ao carregar confirmação de solicitação:', error);
+    req.session.flashMessage = {
+      type: 'error',
+      text: 'Ocorreu um erro ao carregar a solicitação'
+    };
+    res.redirect('/dashboard');
+  }
+});
+
 router.post('/request/ecpf', isAuthenticated, async (req, res) => {
   try {
     const CertificateRequest = sequelize.models.CertificateRequest;
@@ -63,8 +91,9 @@ router.post('/request/ecpf', isAuthenticated, async (req, res) => {
       input: req.body,
       emailValidator
     });
+    payload.metadata = buildCertificateRequestMetadata(req);
 
-    await CertificateRequest.create({
+    const request = await CertificateRequest.create({
       type: 'e-CPF',
       status: 'pending',
       payload,
@@ -77,12 +106,7 @@ router.post('/request/ecpf', isAuthenticated, async (req, res) => {
       message: `Olá, ${req.session.user.fullName}.\n\nRecebemos sua solicitação de certificado e-CPF. Ela será analisada pela administração do ZeroCert.`
     });
 
-    req.session.flashMessage = {
-      type: 'success',
-      text: 'Solicitação de certificado e-CPF enviada para aprovação'
-    };
-
-    res.redirect('/dashboard');
+    res.redirect(`/certificates/request/submitted/${request.id}`);
   } catch (error) {
     if (error instanceof CertificateRequestValidationError) {
       return res.render('certificates/request-ecpf', {
@@ -114,8 +138,9 @@ router.post('/request/ecnpj', isAuthenticated, async (req, res) => {
       input: req.body,
       emailValidator
     });
+    payload.metadata = buildCertificateRequestMetadata(req);
 
-    await CertificateRequest.create({
+    const request = await CertificateRequest.create({
       type: 'e-CNPJ',
       status: 'pending',
       payload,
@@ -128,12 +153,7 @@ router.post('/request/ecnpj', isAuthenticated, async (req, res) => {
       message: `Olá, ${req.session.user.fullName}.\n\nRecebemos sua solicitação de certificado e-CNPJ. Ela será analisada pela administração do ZeroCert.`
     });
 
-    req.session.flashMessage = {
-      type: 'success',
-      text: 'Solicitação de certificado e-CNPJ enviada para aprovação'
-    };
-
-    res.redirect('/dashboard');
+    res.redirect(`/certificates/request/submitted/${request.id}`);
   } catch (error) {
     if (error instanceof CertificateRequestValidationError) {
       return res.render('certificates/request-ecnpj', {
