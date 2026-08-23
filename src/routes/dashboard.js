@@ -553,11 +553,15 @@ router.get('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
 
 // Rota para processar a edição de um usuário (apenas admin)
 router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
+  let editableUser = null;
+
   try {
     const { password, confirmPassword, email, role, active } = req.body;
     const User = sequelize.models.User;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
     
     const user = await User.findByPk(req.params.id);
+    editableUser = user;
     
     if (!user) {
       req.session.flashMessage = {
@@ -628,7 +632,7 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
     if (error instanceof UserIdentityError || error instanceof PrivilegedEmailError) {
       return res.render('dashboard/user-form', {
         title: 'Editar Usuário - ZeroCert ICP-Brasil',
-        user: { id: req.params.id, ...req.body },
+        user: { id: req.params.id, username: editableUser ? editableUser.username : '', ...req.body },
         isNew: false,
         error: error.message
       });
@@ -637,7 +641,7 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
     console.error('Erro ao atualizar usuário:', error);
     res.render('dashboard/user-form', {
       title: 'Editar Usuário - ZeroCert ICP-Brasil',
-      user: { id: req.params.id, ...req.body },
+      user: { id: req.params.id, username: editableUser ? editableUser.username : '', ...req.body },
       isNew: false,
       error: 'Ocorreu um erro ao atualizar o usuário. Tente novamente mais tarde.'
     });

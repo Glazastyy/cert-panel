@@ -69,4 +69,14 @@ describe('admin authorization boundaries', () => {
     expect(html).toContain('/certificates/issue/ecpf');
     expect(html).toContain('/certificates/issue/ecnpj');
   });
+
+  test('user edit route normalizes e-mail before privileged role validation', () => {
+    const source = readRoute('dashboard.js');
+    const editRouteStart = source.indexOf("router.post('/users/edit/:id'");
+    const editRouteEnd = source.indexOf("router.post('/users/delete/:id'");
+    const editRouteSource = source.slice(editRouteStart, editRouteEnd);
+
+    expect(editRouteSource).toContain('const normalizedEmail = String(email || \'\').trim().toLowerCase();');
+    expect(editRouteSource.indexOf('const normalizedEmail')).toBeLessThan(editRouteSource.indexOf('assertPrivilegedEmailAllowed'));
+  });
 });
