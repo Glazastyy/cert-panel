@@ -118,6 +118,22 @@ describe('dashboard views', () => {
     expect(html).toContain('Client Auth, Email Protection');
   });
 
+  test('certificate validation result does not expose certificate details', () => {
+    const html = renderView('certificates/validate-result.pug', {
+      title: 'Resultado da Validação',
+      user: null,
+      status: 'valid',
+      message: 'Certificado válido'
+    });
+
+    expect(html).toContain('Certificado válido');
+    expect(html).not.toContain('Dados do Titular');
+    expect(html).not.toContain('Informações Técnicas');
+    expect(html).not.toContain('Número de Série');
+    expect(html).not.toContain('CPF:');
+    expect(html).not.toContain('CNPJ:');
+  });
+
   test('ship persisted dark mode assets', () => {
     const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'css', 'custom.css'), 'utf8');
     const js = fs.readFileSync(path.join(__dirname, '..', 'src', 'public', 'js', 'custom.js'), 'utf8');

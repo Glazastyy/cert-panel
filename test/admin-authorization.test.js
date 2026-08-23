@@ -20,7 +20,7 @@ function renderLayoutForUser(user) {
 }
 
 describe('admin authorization boundaries', () => {
-  test('dashboard admin resources require strict admin role', () => {
+  test('dashboard user, email and request resources require strict admin role', () => {
     const source = readRoute('dashboard.js');
 
     expect(source).toContain("req.session.user.role !== 'admin'");
@@ -31,29 +31,26 @@ describe('admin authorization boundaries', () => {
     expect(source).toContain("router.post('/emails', isAuthenticated, isAdmin");
     expect(source).toContain("router.get('/users', isAuthenticated, isAdmin");
     expect(source).toContain("router.post('/users/delete/:id', isAuthenticated, isAdmin");
-    expect(source).toContain("router.get('/certificates', isAuthenticated, isAdmin");
-    expect(source).not.toContain("role !== 'admin' && req.session.user.role !== 'operator'");
-    expect(source).not.toContain("role === 'admin' || req.session.user.role === 'operator'");
+    expect(source).toContain("router.get('/certificates', isAuthenticated, isAdminOrOperator");
+    expect(source).toContain("req.session.user.role !== 'admin' && req.session.user.role !== 'operator'");
   });
 
-  test('certificate administration routes require strict admin role', () => {
+  test('certificate management routes allow admins and operators only', () => {
     const source = readRoute('certificates.js');
 
-    expect(source).toContain("req.session.user.role !== 'admin'");
-    expect(source).toContain("router.get('/issue/ecpf', isAuthenticated, isAdmin");
-    expect(source).toContain("router.post('/issue/ecpf', isAuthenticated, isAdmin");
-    expect(source).toContain("router.get('/issue/ecnpj', isAuthenticated, isAdmin");
-    expect(source).toContain("router.post('/issue/ecnpj', isAuthenticated, isAdmin");
-    expect(source).toContain("router.post('/revoke/:id', isAuthenticated, isAdmin");
-    expect(source).toContain("router.get('/users', isAuthenticated, isAdmin");
-    expect(source).toContain("router.get('/validate', isAuthenticated");
-    expect(source).toContain("router.post('/validate', isAuthenticated");
+    expect(source).toContain("req.session.user.role !== 'admin' && req.session.user.role !== 'operator'");
+    expect(source).toContain("router.get('/issue/ecpf', isAuthenticated, isAdminOrOperator");
+    expect(source).toContain("router.post('/issue/ecpf', isAuthenticated, isAdminOrOperator");
+    expect(source).toContain("router.get('/issue/ecnpj', isAuthenticated, isAdminOrOperator");
+    expect(source).toContain("router.post('/issue/ecnpj', isAuthenticated, isAdminOrOperator");
+    expect(source).toContain("router.post('/revoke/:id', isAuthenticated, isAdminOrOperator");
+    expect(source).toContain("router.get('/users', isAuthenticated, isAdminOrOperator");
+    expect(source).toContain("router.get('/validate', (req, res)");
+    expect(source).toContain("router.post('/validate', async (req, res)");
     expect(source).toContain("certificate.userId !== req.session.user.id");
-    expect(source).not.toContain("role !== 'admin' && req.session.user.role !== 'operator'");
-    expect(source).not.toContain("role === 'admin' || user.role === 'operator'");
   });
 
-  test('non-admin navigation does not expose admin certificate or user management links', () => {
+  test('operator navigation exposes certificate management but not admin-only areas', () => {
     const html = renderLayoutForUser({
       id: 7,
       username: 'OPERA1',
@@ -65,8 +62,8 @@ describe('admin authorization boundaries', () => {
     expect(html).not.toContain('/dashboard/users');
     expect(html).not.toContain('/dashboard/certificate-requests');
     expect(html).not.toContain('/dashboard/emails');
-    expect(html).not.toContain('/dashboard/certificates');
-    expect(html).not.toContain('/certificates/issue/ecpf');
-    expect(html).not.toContain('/certificates/issue/ecnpj');
+    expect(html).toContain('/dashboard/certificates');
+    expect(html).toContain('/certificates/issue/ecpf');
+    expect(html).toContain('/certificates/issue/ecnpj');
   });
 });

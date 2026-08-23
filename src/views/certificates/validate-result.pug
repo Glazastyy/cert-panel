@@ -15,122 +15,12 @@ block content
               strong.me-2 Status: 
               if status === 'valid'
                 span.badge.bg-success.fs-6 Válido
-              else if status === 'revoked'
-                span.badge.bg-danger.fs-6 Revogado
-              else if status === 'expired'
-                span.badge.bg-warning.text-dark.fs-6 Expirado
-              else if status === 'not-yet-valid'
-                span.badge.bg-info.fs-6 Ainda não válido
-            
-            .alert(class=status === 'valid' ? 'alert-success' : status === 'revoked' ? 'alert-danger' : status === 'expired' ? 'alert-warning' : 'alert-info')
-              i(class=`bi ${status === 'valid' ? 'bi-check-circle-fill' : status === 'revoked' ? 'bi-x-circle-fill' : status === 'expired' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'} me-2`)
-              | #{message}
-          
-          .row.mb-4
-            .col-md-6
-              h5.border-bottom.pb-2 Informações Gerais
-              
-              .mb-3
-                label.fw-bold Tipo de Certificado:
-                p #{certificate.type}
-              
-              .mb-3
-                label.fw-bold Número de Série:
-                p.font-monospace #{certificate.serialNumber}
-              
-              .mb-3
-                label.fw-bold Emitido em:
-                p #{certificate.validFrom.toLocaleDateString('pt-BR')}
-              
-              .mb-3
-                label.fw-bold Válido até:
-                p #{certificate.validTo.toLocaleDateString('pt-BR')}
-              
-              if certificate.revoked
-                .mb-3
-                  label.fw-bold Revogado em:
-                  p #{certificate.revokedAt.toLocaleDateString('pt-BR')}
-                
-                .mb-3
-                  label.fw-bold Motivo da Revogação:
-                  p #{certificate.revokedReason}
-            
-            .col-md-6
-              h5.border-bottom.pb-2 Dados do Titular
-              
-              if certificate.type === 'e-CPF'
-                .mb-3
-                  label.fw-bold Nome Completo:
-                  p #{certificate.subject.name}
-                
-                .mb-3
-                  label.fw-bold CPF:
-                  p #{certificate.subject.cpf}
-                
-                if certificate.subject.birthDate
-                  .mb-3
-                    label.fw-bold Data de Nascimento:
-                    p #{new Date(certificate.subject.birthDate).toLocaleDateString('pt-BR')}
-                
-                if certificate.subject.socialSecurity
-                  .mb-3
-                    label.fw-bold PIS/PASEP/NIS:
-                    p #{certificate.subject.socialSecurity}
               else
-                .mb-3
-                  label.fw-bold Razão Social:
-                  p #{certificate.subject.companyName}
-                
-                .mb-3
-                  label.fw-bold CNPJ:
-                  p #{certificate.subject.cnpj}
-                
-                if certificate.subject.tradeName
-                  .mb-3
-                    label.fw-bold Nome Fantasia:
-                    p #{certificate.subject.tradeName}
-                
-                if certificate.subject.responsibleName
-                  .mb-3
-                    label.fw-bold Responsável Legal:
-                    p #{certificate.subject.responsibleName} (CPF: #{certificate.subject.responsibleCpf})
-                
-                if certificate.subject.responsiblePosition
-                  .mb-3
-                    label.fw-bold Cargo do Responsável:
-                    p #{certificate.subject.responsiblePosition}
-          
-          .row.mb-4
-            .col-md-12
-              h5.border-bottom.pb-2 Informações Técnicas
-              
-              .row
-                .col-md-6
-                  .mb-3
-                    label.fw-bold Autoridade Certificadora:
-                    p #{certificate.CertificateAuthority ? certificate.CertificateAuthority.name : 'Não disponível'}
-                  
-                  if certificate.policyOid
-                    .mb-3
-                      label.fw-bold Política de Certificação:
-                      p #{certificate.policyOid}
-                  
-                  if certificate.dpcUrl
-                    .mb-3
-                      label.fw-bold DPC (Declaração de Práticas de Certificação):
-                      p
-                        a(href=certificate.dpcUrl, target='_blank') #{certificate.dpcUrl}
-                
-                .col-md-6
-                  if certificate.keyUsage
-                    .mb-3
-                      label.fw-bold Key Usage:
-                      p #{formatCertificateUsage(certificate.keyUsage)}
-                  
-                  if certificate.extendedKeyUsage
-                    .mb-3
-                      label.fw-bold Extended Key Usage:
-                      p #{formatCertificateUsage(certificate.extendedKeyUsage)}
+                span.badge.bg-danger.fs-6 Inválido
+            
+            .alert(class=status === 'valid' ? 'alert-success' : 'alert-danger')
+              i(class=`bi ${status === 'valid' ? 'bi-check-circle-fill' : 'bi-x-circle-fill'} me-2`)
+              | #{message}
           
           .row
             .col-md-12

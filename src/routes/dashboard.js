@@ -34,6 +34,17 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
+const isAdminOrOperator = (req, res, next) => {
+  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'operator')) {
+    return res.status(403).render('error', {
+      title: 'Acesso Negado',
+      message: 'Você não tem permissão para acessar esta página.',
+      error: { status: 403 }
+    });
+  }
+  next();
+};
+
 const dateToDDMMYYYY = (value) => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value;
@@ -681,7 +692,7 @@ router.post('/users/delete/:id', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 // Rota para visualizar todos os certificados
-router.get('/certificates', isAuthenticated, isAdmin, async (req, res) => {
+router.get('/certificates', isAuthenticated, isAdminOrOperator, async (req, res) => {
   try {
     const Certificate = sequelize.models.Certificate;
     const User = sequelize.models.User;

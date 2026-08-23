@@ -21,8 +21,8 @@ const isAuthenticated = (req, res, next) => {
   next();
 };
 
-const isAdmin = (req, res, next) => {
-  if (!req.session.user || req.session.user.role !== 'admin') {
+const isAdminOrOperator = (req, res, next) => {
+  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'operator')) {
     return res.status(403).render('error', {
       title: 'Acesso Negado',
       message: 'Você não tem permissão para acessar esta página.',
@@ -32,7 +32,7 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
-const isPrivilegedUser = (user) => user && user.role === 'admin';
+const isPrivilegedUser = (user) => user && (user.role === 'admin' || user.role === 'operator');
 
 const dateToDDMMYYYY = (value) => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -172,14 +172,14 @@ router.post('/request/ecnpj', isAuthenticated, async (req, res) => {
   }
 });
 
-router.get('/issue/ecpf', isAuthenticated, isAdmin, (req, res) => {
+router.get('/issue/ecpf', isAuthenticated, isAdminOrOperator, (req, res) => {
   res.render('certificates/issue-ecpf', {
     title: 'Emitir Certificado e-CPF - ZeroCert ICP-Brasil'
   });
 });
 
 // Rota para processar a emissão de certificado e-CPF
-router.post('/issue/ecpf', isAuthenticated, isAdmin, async (req, res) => {
+router.post('/issue/ecpf', isAuthenticated, isAdminOrOperator, async (req, res) => {
   try {
     const {
       name,
@@ -246,14 +246,14 @@ router.post('/issue/ecpf', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 // Rota para a página de emissão de certificado e-CNPJ
-router.get('/issue/ecnpj', isAuthenticated, isAdmin, (req, res) => {
+router.get('/issue/ecnpj', isAuthenticated, isAdminOrOperator, (req, res) => {
   res.render('certificates/issue-ecnpj', {
     title: 'Emitir Certificado e-CNPJ - ZeroCert ICP-Brasil'
   });
 });
 
 // Rota para processar a emissão de certificado e-CNPJ
-router.post('/issue/ecnpj', isAuthenticated, isAdmin, async (req, res) => {
+router.post('/issue/ecnpj', isAuthenticated, isAdminOrOperator, async (req, res) => {
   try {
     const {
       companyName,
@@ -349,7 +349,7 @@ router.get('/view/:id', isAuthenticated, async (req, res) => {
     }
     
     // Verificar se o usuário tem permissão para visualizar o certificado
-    if (req.session.user.role !== 'admin' && certificate.userId !== req.session.user.id) {
+    if (!isPrivilegedUser(req.session.user) && certificate.userId !== req.session.user.id) {
       return res.status(403).render('error', {
         title: 'Acesso Negado',
         message: 'Você não tem permissão para visualizar este certificado.',
@@ -391,7 +391,7 @@ router.get('/download/pem/:id', isAuthenticated, async (req, res) => {
     }
     
     // Verificar se o usuário tem permissão para baixar o certificado
-    if (req.session.user.role !== 'admin' && certificate.userId !== req.session.user.id) {
+    if (!isPrivilegedUser(req.session.user) && certificate.userId !== req.session.user.id) {
       return res.status(403).render('error', {
         title: 'Acesso Negado',
         message: 'Você não tem permissão para baixar este certificado.',
@@ -440,7 +440,7 @@ router.get('/download/p12/:id', isAuthenticated, async (req, res) => {
     }
     
     // Verificar se o usuário tem permissão para baixar o certificado
-    if (req.session.user.role !== 'admin' && certificate.userId !== req.session.user.id) {
+    if (!isPrivilegedUser(req.session.user) && certificate.userId !== req.session.user.id) {
       return res.status(403).render('error', {
         title: 'Acesso Negado',
         message: 'Você não tem permissão para baixar este certificado.',
@@ -482,7 +482,7 @@ router.get('/download/p12/:id', isAuthenticated, async (req, res) => {
 });
 
 // Rota para revogar um certificado
-router.post('/revoke/:id', isAuthenticated, isAdmin, async (req, res) => {
+router.post('/revoke/:id', isAuthenticated, isAdminOrOperator, async (req, res) => {
   try {
     const { reason } = req.body;
     const Certificate = sequelize.models.Certificate;
@@ -527,7 +527,7 @@ router.post('/revoke/:id', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 // Rota para listar usuários para seleção ao emitir certificado
-router.get('/users', isAuthenticated, isAdmin, async (req, res) => {
+router.get('/users', isAuthenticated, isAdminOrOperator, async (req, res) => {
   try {
     const User = sequelize.models.User;
     
@@ -545,41 +545,26 @@ router.get('/users', isAuthenticated, isAdmin, async (req, res) => {
 });
 
 // Rota para a página de validação de certificados
-router.get('/validate', isAuthenticated, (req, res) => {
+router.get('/validate', (req, res) => {
   res.render('certificates/validate', {
     title: 'Validar Certificado - ZeroCert ICP-Brasil'
   });
 });
 
 // Rota para processar a validação de certificados
-router.post('/validate', isAuthenticated, async (req, res) => {
+router.post('/validate', async (req, res) => {
   try {
     const { serialNumber } = req.body;
     const Certificate = sequelize.models.Certificate;
-    const CertificateAuthority = sequelize.models.CertificateAuthority;
-    
-    // Buscar o certificado pelo número de série
     const certificate = await Certificate.findOne({
-      where: { serialNumber },
-      include: [{
-        model: CertificateAuthority,
-        attributes: ['name', 'commonName']
-      }]
+      where: { serialNumber }
     });
     
     if (!certificate) {
-      return res.render('certificates/validate', {
-        title: 'Validar Certificado - ZeroCert ICP-Brasil',
-        error: 'Certificado não encontrado',
-        serialNumber
-      });
-    }
-
-    if (req.session.user.role !== 'admin' && certificate.userId !== req.session.user.id) {
-      return res.status(403).render('error', {
-        title: 'Acesso Negado',
-        message: 'Você não tem permissão para validar este certificado.',
-        error: { status: 403 }
+      return res.render('certificates/validate-result', {
+        title: 'Resultado da Validação - ZeroCert ICP-Brasil',
+        status: 'invalid',
+        message: 'Certificado inválido'
       });
     }
     
@@ -587,28 +572,21 @@ router.post('/validate', isAuthenticated, async (req, res) => {
     const now = new Date();
     const isValid = !certificate.revoked && now >= certificate.validFrom && now <= certificate.validTo;
     
-    let status, message;
+    let status;
+    let message;
     
     if (isValid) {
       status = 'valid';
       message = 'Certificado válido';
-    } else if (certificate.revoked) {
-      status = 'revoked';
-      message = `Certificado revogado em ${certificate.revokedAt.toLocaleDateString('pt-BR')} por: ${certificate.revokedReason}`;
-    } else if (now < certificate.validFrom) {
-      status = 'not-yet-valid';
-      message = `Certificado ainda não é válido. Válido a partir de ${certificate.validFrom.toLocaleDateString('pt-BR')}`;
     } else {
-      status = 'expired';
-      message = `Certificado expirado. Validade até ${certificate.validTo.toLocaleDateString('pt-BR')}`;
+      status = 'invalid';
+      message = 'Certificado inválido';
     }
     
     res.render('certificates/validate-result', {
       title: 'Resultado da Validação - ZeroCert ICP-Brasil',
-      certificate,
       status,
-      message,
-      formatCertificateUsage
+      message
     });
   } catch (error) {
     console.error('Erro ao validar certificado:', error);

@@ -32,7 +32,7 @@ html(lang='pt-BR', data-bs-theme='light')
             if user
               li.nav-item
                 a.nav-link(href='/dashboard') Dashboard
-              if user.role === 'admin'
+              if user.role === 'admin' || user.role === 'operator'
                 li.nav-item.dropdown
                   a.nav-link.dropdown-toggle(href='#', role='button', data-bs-toggle='dropdown') Certificados
                   ul.dropdown-menu
