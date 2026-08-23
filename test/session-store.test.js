@@ -33,8 +33,9 @@ describe('database session store', () => {
     try {
       await sequelize.sync({ force: true });
 
-      const firstStore = createDatabaseSessionStore({ sessionModel: Session });
-      const secondStore = createDatabaseSessionStore({ sessionModel: Session });
+      const currentTime = () => new Date('2026-08-22T12:00:00.000Z');
+      const firstStore = createDatabaseSessionStore({ sessionModel: Session, now: currentTime });
+      const secondStore = createDatabaseSessionStore({ sessionModel: Session, now: currentTime });
       const expires = new Date('2026-08-23T12:00:00.000Z');
 
       await callStore('set', firstStore, 'sid-1', {
@@ -94,7 +95,10 @@ describe('database session store', () => {
     try {
       await sequelize.sync({ force: true });
 
-      const store = createDatabaseSessionStore({ sessionModel: Session });
+      const store = createDatabaseSessionStore({
+        sessionModel: Session,
+        now: () => new Date('2026-08-22T12:00:00.000Z')
+      });
       const initialExpires = new Date('2026-08-23T12:00:00.000Z');
       const touchedExpires = new Date('2026-08-24T12:00:00.000Z');
 
