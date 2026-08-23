@@ -11,23 +11,18 @@ const {
 const { buildCertificateRequestMetadata } = require('../services/certificate-request-metadata');
 const { emailService } = require('../services/email');
 const { emailValidator } = require('../services/email-validation');
+const {
+  createAuthenticatedMiddleware,
+  renderForbidden
+} = require('../services/session-authorization');
 const fs = require('fs');
 const path = require('path');
 
-const isAuthenticated = (req, res, next) => {
-  if (!req.session.user) {
-    return res.redirect('/login');
-  }
-  next();
-};
+const isAuthenticated = createAuthenticatedMiddleware({ sequelize });
 
 const isAdminOrOperator = (req, res, next) => {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'operator')) {
-    return res.status(403).render('error', {
-      title: 'Acesso Negado',
-      message: 'Você não tem permissão para acessar esta página.',
-      error: { status: 403 }
-    });
+    return renderForbidden(res);
   }
   next();
 };

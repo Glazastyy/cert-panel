@@ -17,6 +17,10 @@ const {
   normalizeUserIdentity,
 } = require('../services/user-identity');
 const { findLoginUser } = require('../services/login');
+const {
+  PrivilegedEmailError,
+  assertPrivilegedEmailAllowed
+} = require('../services/privileged-email');
 
 function createCurrentRegistrationService() {
   return createRegistrationService({
@@ -86,6 +90,20 @@ router.post('/login', async (req, res) => {
         error: 'Usuário desativado. Entre em contato com o administrador',
         username
       });
+    }
+
+    try {
+      assertPrivilegedEmailAllowed({ role: user.role, email: user.email });
+    } catch (error) {
+      if (error instanceof PrivilegedEmailError) {
+        return res.render('auth/login', {
+          title: 'Login - ZeroCert ICP-Brasil',
+          error: error.message,
+          username
+        });
+      }
+
+      throw error;
     }
     
     await applyLoginIdentityUpdate(req, User, user);

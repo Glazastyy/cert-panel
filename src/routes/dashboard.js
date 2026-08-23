@@ -13,34 +13,27 @@ const {
   generateUniqueUsername,
   normalizeFullName
 } = require('../services/user-identity');
+const {
+  PrivilegedEmailError,
+  assertPrivilegedEmailAllowed
+} = require('../services/privileged-email');
+const {
+  createAuthenticatedMiddleware,
+  renderForbidden
+} = require('../services/session-authorization');
 
-// Middleware para verificar se o usuário está autenticado
-const isAuthenticated = (req, res, next) => {
-  if (!req.session.user) {
-    return res.redirect('/login');
-  }
-  next();
-};
+const isAuthenticated = createAuthenticatedMiddleware({ sequelize });
 
-// Middleware para verificar se o usuário é administrador
 const isAdmin = (req, res, next) => {
   if (!req.session.user || req.session.user.role !== 'admin') {
-    return res.status(403).render('error', {
-      title: 'Acesso Negado',
-      message: 'Você não tem permissão para acessar esta página.',
-      error: { status: 403 }
-    });
+    return renderForbidden(res);
   }
   next();
 };
 
 const isAdminOrOperator = (req, res, next) => {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'operator')) {
-    return res.status(403).render('error', {
-      title: 'Acesso Negado',
-      message: 'Você não tem permissão para acessar esta página.',
-      error: { status: 403 }
-    });
+    return renderForbidden(res);
   }
   next();
 };
@@ -463,22 +456,24 @@ router.post('/users/add', isAuthenticated, isAdmin, async (req, res) => {
   try {
     const { password, confirmPassword, email, role, active } = req.body;
     const User = sequelize.models.User;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
     const fullName = normalizeFullName(req.body.fullName);
     const username = await generateUniqueUsername({
       userModel: User,
       fullName
     });
+    assertPrivilegedEmailAllowed({ role, email: normalizedEmail });
     
     if (password !== confirmPassword) {
       return res.render('dashboard/user-form', {
         title: 'Adicionar Usuário - ZeroCert ICP-Brasil',
-        user: { fullName, email, role },
+        user: { fullName, email: normalizedEmail, role },
         isNew: true,
         error: 'As senhas não coincidem'
       });
     }
 
-    const existingEmail = await User.findOne({ where: { email } });
+    const existingEmail = await User.findOne({ where: { email: normalizedEmail } });
     
     if (existingEmail) {
       return res.render('dashboard/user-form', {
@@ -493,7 +488,7 @@ router.post('/users/add', isAuthenticated, isAdmin, async (req, res) => {
       username,
       password,
       fullName,
-      email,
+      email: normalizedEmail,
       role,
       active: active === 'on'
     });
@@ -505,7 +500,7 @@ router.post('/users/add', isAuthenticated, isAdmin, async (req, res) => {
     
     res.redirect('/dashboard/users');
   } catch (error) {
-    if (error instanceof UserIdentityError) {
+    if (error instanceof UserIdentityError || error instanceof PrivilegedEmailError) {
       return res.render('dashboard/user-form', {
         title: 'Adicionar Usuário - ZeroCert ICP-Brasil',
         user: req.body,
@@ -578,14 +573,15 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
       fullName,
       excludeUserId: user.id
     });
+    assertPrivilegedEmailAllowed({ role, email: normalizedEmail });
 
-    if (email !== user.email) {
-      const existingEmail = await User.findOne({ where: { email } });
+    if (normalizedEmail !== user.email) {
+      const existingEmail = await User.findOne({ where: { email: normalizedEmail } });
       
       if (existingEmail && existingEmail.id !== user.id) {
         return res.render('dashboard/user-form', {
           title: 'Editar Usuário - ZeroCert ICP-Brasil',
-          user: { id: user.id, username: user.username, fullName, role, active },
+          user: { id: user.id, username: user.username, fullName, email: normalizedEmail, role, active },
           isNew: false,
           error: 'E-mail já está em uso'
         });
@@ -595,7 +591,7 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
     const updateData = {
       username,
       fullName,
-      email,
+      email: normalizedEmail,
       role,
       active: active === 'on'
     };
@@ -604,7 +600,7 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
       if (password !== confirmPassword) {
         return res.render('dashboard/user-form', {
           title: 'Editar Usuário - ZeroCert ICP-Brasil',
-          user: { id: user.id, username: user.username, fullName, email, role, active },
+          user: { id: user.id, username: user.username, fullName, email: normalizedEmail, role, active },
           isNew: false,
           error: 'As senhas não coincidem'
         });
@@ -618,7 +614,7 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
     if (req.session.user && req.session.user.id === user.id) {
       req.session.user.username = username;
       req.session.user.fullName = fullName;
-      req.session.user.email = email;
+      req.session.user.email = normalizedEmail;
       req.session.user.role = role;
     }
 
@@ -629,7 +625,7 @@ router.post('/users/edit/:id', isAuthenticated, isAdmin, async (req, res) => {
     
     res.redirect('/dashboard/users');
   } catch (error) {
-    if (error instanceof UserIdentityError) {
+    if (error instanceof UserIdentityError || error instanceof PrivilegedEmailError) {
       return res.render('dashboard/user-form', {
         title: 'Editar Usuário - ZeroCert ICP-Brasil',
         user: { id: req.params.id, ...req.body },
@@ -755,6 +751,7 @@ router.post('/profile', isAuthenticated, async (req, res) => {
   try {
     const { email, currentPassword, newPassword, confirmPassword } = req.body;
     const User = sequelize.models.User;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
     
     const user = await User.findByPk(req.session.user.id);
     
@@ -768,14 +765,15 @@ router.post('/profile', isAuthenticated, async (req, res) => {
       fullName,
       excludeUserId: user.id
     });
+    assertPrivilegedEmailAllowed({ role: user.role, email: normalizedEmail });
 
-    if (email !== user.email) {
-      const existingEmail = await User.findOne({ where: { email } });
+    if (normalizedEmail !== user.email) {
+      const existingEmail = await User.findOne({ where: { email: normalizedEmail } });
       
       if (existingEmail && existingEmail.id !== user.id) {
         return res.render('dashboard/profile', {
           title: 'Meu Perfil - ZeroCert ICP-Brasil',
-          user: { ...user.toJSON(), fullName },
+          user: { ...user.toJSON(), fullName, email: normalizedEmail },
           error: 'E-mail já está em uso'
         });
       }
@@ -784,14 +782,14 @@ router.post('/profile', isAuthenticated, async (req, res) => {
     const updateData = {
       username,
       fullName,
-      email
+      email: normalizedEmail
     };
 
     if (newPassword) {
       if (!(await user.checkPassword(currentPassword))) {
         return res.render('dashboard/profile', {
           title: 'Meu Perfil - ZeroCert ICP-Brasil',
-          user: { ...user.toJSON(), fullName, email },
+          user: { ...user.toJSON(), fullName, email: normalizedEmail },
           error: 'Senha atual incorreta'
         });
       }
@@ -799,7 +797,7 @@ router.post('/profile', isAuthenticated, async (req, res) => {
       if (newPassword !== confirmPassword) {
         return res.render('dashboard/profile', {
           title: 'Meu Perfil - ZeroCert ICP-Brasil',
-          user: { ...user.toJSON(), fullName, email },
+          user: { ...user.toJSON(), fullName, email: normalizedEmail },
           error: 'A nova senha e a confirmação não coincidem'
         });
       }
@@ -812,15 +810,15 @@ router.post('/profile', isAuthenticated, async (req, res) => {
     delete req.session.requireNameCorrection;
     req.session.user.username = username;
     req.session.user.fullName = fullName;
-    req.session.user.email = email;
+    req.session.user.email = normalizedEmail;
     
     res.render('dashboard/profile', {
       title: 'Meu Perfil - ZeroCert ICP-Brasil',
-      user: { ...user.toJSON(), fullName, email },
+      user: { ...user.toJSON(), fullName, email: normalizedEmail },
       success: 'Perfil atualizado com sucesso'
     });
   } catch (error) {
-    if (error instanceof UserIdentityError) {
+    if (error instanceof UserIdentityError || error instanceof PrivilegedEmailError) {
       return res.render('dashboard/profile', {
         title: 'Meu Perfil - ZeroCert ICP-Brasil',
         user: { ...req.session.user, fullName: req.body.fullName, email: req.body.email },

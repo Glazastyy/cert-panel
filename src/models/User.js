@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const { Op } = require('sequelize');
 const bcrypt = require('bcrypt');
+const { isAllowedPrivilegedEmail } = require('../services/privileged-email');
 
 module.exports = (sequelize) => {
   const User = sequelize.define('User', {
@@ -61,10 +62,36 @@ module.exports = (sequelize) => {
     return await bcrypt.compare(password, this.password);
   };
 
+  User.resolveDefaultAdminEmail = async function(currentUserId = null) {
+    const baseCandidates = ['admin@zerocert.com.br', 'admin+adsis0@zerocert.com.br'];
+
+    for (const candidate of baseCandidates) {
+      const owner = await User.findOne({ where: { email: candidate } });
+
+      if (!owner || owner.id === currentUserId) {
+        return candidate;
+      }
+    }
+
+    for (let index = 1; index <= 99; index += 1) {
+      const candidate = `admin+adsis0${index}@zerocert.com.br`;
+      const owner = await User.findOne({ where: { email: candidate } });
+
+      if (!owner || owner.id === currentUserId) {
+        return candidate;
+      }
+    }
+
+    throw new Error('Não foi possível reservar um e-mail administrativo padrão');
+  };
+
   User.createDefaultAdmin = async function() {
     const normalizedAdmin = await User.findOne({ where: { username: 'ADSIS0' } });
     
     if (normalizedAdmin) {
+      if (!isAllowedPrivilegedEmail(normalizedAdmin.email)) {
+        await normalizedAdmin.update({ email: await User.resolveDefaultAdminEmail(normalizedAdmin.id) });
+      }
       return;
     }
 
@@ -73,7 +100,8 @@ module.exports = (sequelize) => {
     if (legacyAdmin) {
       await legacyAdmin.update({
         username: 'ADSIS0',
-        fullName: 'ADMINISTRADOR DO SISTEMA'
+        fullName: 'ADMINISTRADOR DO SISTEMA',
+        email: await User.resolveDefaultAdminEmail(legacyAdmin.id)
       });
       return;
     }
@@ -82,7 +110,7 @@ module.exports = (sequelize) => {
       username: 'ADSIS0',
       password: 'admin123',
       fullName: 'ADMINISTRADOR DO SISTEMA',
-      email: 'admin@zerocert.local',
+      email: await User.resolveDefaultAdminEmail(),
       role: 'admin'
     });
     console.log('Usuário administrador padrão criado');

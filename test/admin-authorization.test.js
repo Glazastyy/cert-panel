@@ -23,6 +23,8 @@ describe('admin authorization boundaries', () => {
   test('dashboard user, email and request resources require strict admin role', () => {
     const source = readRoute('dashboard.js');
 
+    expect(source).toContain("createAuthenticatedMiddleware({ sequelize })");
+    expect(source).toContain('assertPrivilegedEmailAllowed');
     expect(source).toContain("req.session.user.role !== 'admin'");
     expect(source).toContain("router.get('/certificate-requests', isAuthenticated, isAdmin");
     expect(source).toContain("router.get('/certificate-requests/:id', isAuthenticated, isAdmin");
@@ -38,6 +40,7 @@ describe('admin authorization boundaries', () => {
   test('certificate management routes allow admins and operators only', () => {
     const source = readRoute('certificates.js');
 
+    expect(source).toContain("createAuthenticatedMiddleware({ sequelize })");
     expect(source).toContain("req.session.user.role !== 'admin' && req.session.user.role !== 'operator'");
     expect(source).toContain("router.get('/issue/ecpf', isAuthenticated, isAdminOrOperator");
     expect(source).toContain("router.post('/issue/ecpf', isAuthenticated, isAdminOrOperator");
