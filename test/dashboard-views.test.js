@@ -221,6 +221,35 @@ describe('dashboard views', () => {
     expect(socialSecurityInput[0]).not.toContain('required');
   });
 
+  test('loads certificate request validation on e-CPF and e-CNPJ request forms', () => {
+    const user = {
+      id: 3,
+      username: 'ANSIL4',
+      fullName: 'ANA SILVA',
+      email: 'ana@example.com',
+      role: 'user'
+    };
+    const ecpfHtml = renderView('certificates/request-ecpf.pug', {
+      title: 'Solicitar Certificado e-CPF',
+      user,
+      formData: null
+    });
+    const ecnpjHtml = renderView('certificates/request-ecnpj.pug', {
+      title: 'Solicitar Certificado e-CNPJ',
+      user,
+      formData: null
+    });
+
+    expect(ecpfHtml).toContain('/js/certificate-request.js');
+    expect(ecpfHtml).toContain('cpf-mask validate-cpf');
+    expect(ecpfHtml).toContain('pis-mask validate-pis');
+    expect(ecpfHtml).toContain('birth-date-validation');
+    expect(ecnpjHtml).toContain('/js/certificate-request.js');
+    expect(ecnpjHtml).toContain('cnpj-mask validate-cnpj');
+    expect(ecnpjHtml).toContain('cpf-mask validate-cpf');
+    expect(ecnpjHtml).toContain('birth-date-validation');
+  });
+
   test('show admin approval actions for pending certificate requests', () => {
     const html = renderView('dashboard/certificate-requests.pug', {
       title: 'Solicitações de Certificado',

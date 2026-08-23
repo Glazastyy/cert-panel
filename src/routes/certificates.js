@@ -3,7 +3,13 @@ const router = express.Router();
 const { sequelize } = require('../database/db');
 const { createECPFCertificate, createECNPJCertificate, revokeCertificate } = require('../services/ca');
 const { formatCertificateUsage } = require('../services/certificate-formatting');
+const {
+  CertificateRequestValidationError,
+  validateEcnpjCertificateRequest,
+  validateEcpfCertificateRequest
+} = require('../services/certificate-request-validation');
 const { emailService } = require('../services/email');
+const { emailValidator } = require('../services/email-validation');
 const fs = require('fs');
 const path = require('path');
 
@@ -53,20 +59,15 @@ router.get('/request/ecpf', isAuthenticated, (req, res) => {
 router.post('/request/ecpf', isAuthenticated, async (req, res) => {
   try {
     const CertificateRequest = sequelize.models.CertificateRequest;
-    const { name, cpf, birthDate, socialSecurity, email, state, city } = req.body;
+    const payload = await validateEcpfCertificateRequest({
+      input: req.body,
+      emailValidator
+    });
 
     await CertificateRequest.create({
       type: 'e-CPF',
       status: 'pending',
-      payload: {
-        name,
-        cpf,
-        birthDate,
-        socialSecurity,
-        email,
-        state,
-        city
-      },
+      payload,
       userId: req.session.user.id
     });
 
@@ -83,6 +84,14 @@ router.post('/request/ecpf', isAuthenticated, async (req, res) => {
 
     res.redirect('/dashboard');
   } catch (error) {
+    if (error instanceof CertificateRequestValidationError) {
+      return res.render('certificates/request-ecpf', {
+        title: 'Solicitar Certificado e-CPF - ZeroCert ICP-Brasil',
+        error: error.message,
+        formData: error.formData && Object.keys(error.formData).length > 0 ? error.formData : req.body
+      });
+    }
+
     console.error('Erro ao solicitar certificado e-CPF:', error);
     res.render('certificates/request-ecpf', {
       title: 'Solicitar Certificado e-CPF - ZeroCert ICP-Brasil',
@@ -101,34 +110,15 @@ router.get('/request/ecnpj', isAuthenticated, (req, res) => {
 router.post('/request/ecnpj', isAuthenticated, async (req, res) => {
   try {
     const CertificateRequest = sequelize.models.CertificateRequest;
-    const {
-      companyName,
-      cnpj,
-      tradeName,
-      responsibleName,
-      responsibleCpf,
-      responsiblePosition,
-      responsibleBirthDate,
-      email,
-      state,
-      city
-    } = req.body;
+    const payload = await validateEcnpjCertificateRequest({
+      input: req.body,
+      emailValidator
+    });
 
     await CertificateRequest.create({
       type: 'e-CNPJ',
       status: 'pending',
-      payload: {
-        companyName,
-        cnpj,
-        tradeName,
-        responsibleName,
-        responsibleCpf,
-        responsiblePosition,
-        responsibleBirthDate,
-        email,
-        state,
-        city
-      },
+      payload,
       userId: req.session.user.id
     });
 
@@ -145,6 +135,14 @@ router.post('/request/ecnpj', isAuthenticated, async (req, res) => {
 
     res.redirect('/dashboard');
   } catch (error) {
+    if (error instanceof CertificateRequestValidationError) {
+      return res.render('certificates/request-ecnpj', {
+        title: 'Solicitar Certificado e-CNPJ - ZeroCert ICP-Brasil',
+        error: error.message,
+        formData: error.formData && Object.keys(error.formData).length > 0 ? error.formData : req.body
+      });
+    }
+
     console.error('Erro ao solicitar certificado e-CNPJ:', error);
     res.render('certificates/request-ecnpj', {
       title: 'Solicitar Certificado e-CNPJ - ZeroCert ICP-Brasil',

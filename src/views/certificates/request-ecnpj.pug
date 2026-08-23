@@ -7,7 +7,7 @@ block content
         .card-header.bg-primary.text-white
           h4.mb-0 Solicitar Certificado e-CNPJ
         .card-body
-          form(action='/certificates/request/ecnpj', method='POST')
+          form.certificate-request-form(action='/certificates/request/ecnpj', method='POST', novalidate)
             h5.mb-3 Dados da Empresa
             .row.mb-3
               .col-md-6
@@ -15,7 +15,7 @@ block content
                 input#companyName.form-control(type='text', name='companyName', value=formData ? formData.companyName : '', required)
               .col-md-6
                 label.form-label(for='cnpj') CNPJ
-                input#cnpj.form-control(type='text', name='cnpj', value=formData ? formData.cnpj : '', placeholder='00.000.000/0000-00', required)
+                input#cnpj.form-control.cnpj-mask.validate-cnpj(type='text', name='cnpj', value=formData ? formData.cnpj : '', placeholder='00.000.000/0000-00', inputmode='numeric', autocomplete='off', required)
             .row.mb-3
               .col-md-6
                 label.form-label(for='tradeName') Nome Fantasia
@@ -30,14 +30,14 @@ block content
                 input#responsibleName.form-control(type='text', name='responsibleName', value=formData ? formData.responsibleName : user.fullName, required)
               .col-md-6
                 label.form-label(for='responsibleCpf') CPF
-                input#responsibleCpf.form-control(type='text', name='responsibleCpf', value=formData ? formData.responsibleCpf : '', placeholder='000.000.000-00', required)
+                input#responsibleCpf.form-control.cpf-mask.validate-cpf(type='text', name='responsibleCpf', value=formData ? formData.responsibleCpf : '', placeholder='000.000.000-00', inputmode='numeric', autocomplete='off', required)
             .row.mb-3
               .col-md-6
                 label.form-label(for='responsiblePosition') Cargo
                 input#responsiblePosition.form-control(type='text', name='responsiblePosition', value=formData ? formData.responsiblePosition : '', required)
               .col-md-6
                 label.form-label(for='responsibleBirthDate') Data de Nascimento
-                input#responsibleBirthDate.form-control(type='date', name='responsibleBirthDate', value=formData ? formData.responsibleBirthDate : '', required)
+                input#responsibleBirthDate.form-control.birth-date-validation(type='date', name='responsibleBirthDate', value=formData ? formData.responsibleBirthDate : '', required)
             h5.mt-4.mb-3 Endereço da Empresa
             .row.mb-3
               .col-md-6
@@ -56,3 +56,6 @@ block content
               button.btn.btn-primary(type='submit')
                 i.bi.bi-send.me-2
                 | Enviar Solicitação
+
+block scripts
+  script(src='/js/certificate-request.js')
