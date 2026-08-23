@@ -14,6 +14,7 @@ const {
 } = require('./services/session-store');
 const { startEmailQueueWorker } = require('./services/email-queue');
 const { emailService } = require('./services/email');
+const { formatDate, formatDateTime } = require('./services/datetime');
 
 const authRoutes = require('./routes/auth');
 const dashboardRoutes = require('./routes/dashboard');
@@ -57,6 +58,8 @@ initializeDatabase().then(({ models }) => {
   app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
     res.locals.requireNameCorrection = Boolean(req.session.requireNameCorrection);
+    res.locals.formatDate = formatDate;
+    res.locals.formatDateTime = formatDateTime;
     next();
   });
 

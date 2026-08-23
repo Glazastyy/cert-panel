@@ -43,7 +43,7 @@ block content
               br
               small.text-muted #{request.User.username}
             dt Enviada em
-            dd #{request.createdAt.toLocaleString('pt-BR')}
+            dd #{formatDateTime(request.createdAt)}
             if request.Reviewer
               dt Revisada por
               dd
@@ -52,7 +52,7 @@ block content
                 small.text-muted #{request.Reviewer.email}
             if request.reviewedAt
               dt Revisada em
-              dd #{request.reviewedAt.toLocaleString('pt-BR')}
+              dd #{formatDateTime(request.reviewedAt)}
             if request.rejectionReason
               dt Motivo da Rejeição
               dd.text-break #{request.rejectionReason}

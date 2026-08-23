@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { formatDate, formatDateTime } = require('./datetime');
 
 class EmailConfigurationError extends Error {
   constructor(message) {
@@ -102,20 +103,6 @@ function buildRecipientUsers(users, recipientMode, selectedUserIds) {
 
 function normalizeBaseUrl(baseUrl) {
   return String(baseUrl || '').trim().replace(/\/+$/, '');
-}
-
-function formatDate(date) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo'
-  }).format(date);
-}
-
-function formatDateTime(date) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    dateStyle: 'short',
-    timeStyle: 'short'
-  }).format(date);
 }
 
 function firstName(fullName) {

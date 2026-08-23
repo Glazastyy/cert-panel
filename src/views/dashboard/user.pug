@@ -31,8 +31,8 @@ block content
               tr
                 td(data-label='Tipo') #{cert.type}
                 td(data-label='Número de Série') #{cert.serialNumber.substring(0, 8)}...
-                td(data-label='Data de Emissão') #{cert.createdAt.toLocaleDateString('pt-BR')}
-                td(data-label='Validade') #{cert.validTo.toLocaleDateString('pt-BR')}
+                td(data-label='Data de Emissão') #{formatDate(cert.createdAt)}
+                td(data-label='Validade') #{formatDate(cert.validTo)}
                 td(data-label='Status')
                   if cert.revoked
                     span.badge.bg-danger Revogado

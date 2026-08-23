@@ -42,7 +42,7 @@ block content
                     | #{request.payload.companyName}
                     br
                     small.text-muted CNPJ: #{request.payload.cnpj}
-                td #{request.createdAt.toLocaleDateString('pt-BR')}
+                td #{formatDate(request.createdAt)}
                 td
                   case request.status
                     when 'pending'

@@ -18,7 +18,7 @@ block content
             dd.col-sm-8
               span.badge.bg-warning.text-dark Pendente
             dt.col-sm-4 Enviada em
-            dd.col-sm-8 #{request.createdAt.toLocaleString('pt-BR')}
+            dd.col-sm-8 #{formatDateTime(request.createdAt)}
 
           .d-flex.justify-content-between
             a.btn.btn-secondary(href='/dashboard')

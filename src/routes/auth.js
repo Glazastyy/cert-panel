@@ -21,6 +21,7 @@ const {
   PrivilegedEmailError,
   assertPrivilegedEmailAllowed
 } = require('../services/privileged-email');
+const { formatDateTime } = require('../services/datetime');
 
 function createCurrentRegistrationService() {
   return createRegistrationService({
@@ -110,7 +111,7 @@ router.post('/login', async (req, res) => {
     await emailService.sendNotification({
       to: user.email,
       subject: 'Novo login no ZeroCert',
-      message: `Olá, ${user.fullName}.\n\nUm login foi realizado na sua conta ZeroCert.\n\nUsuário: ${user.username}\nData e hora: ${new Date().toLocaleString('pt-BR')}`
+      message: `Olá, ${user.fullName}.\n\nUm login foi realizado na sua conta ZeroCert.\n\nUsuário: ${user.username}\nData e hora: ${formatDateTime(new Date())}`
     });
     
     req.session.user = {

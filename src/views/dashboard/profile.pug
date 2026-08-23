@@ -30,11 +30,11 @@ block content
             .row.mb-3
               .col-md-6
                 label.form-label(for='lastLogin') Último Login
-                input#lastLogin.form-control(type='text', value=user.lastLogin ? user.lastLogin.toLocaleString('pt-BR') : 'Nunca', readonly, disabled)
+                input#lastLogin.form-control(type='text', value=user.lastLogin ? formatDateTime(user.lastLogin) : 'Nunca', readonly, disabled)
               
               .col-md-6
                 label.form-label(for='createdAt') Conta Criada em
-                input#createdAt.form-control(type='text', value=user.createdAt.toLocaleString('pt-BR'), readonly, disabled)
+                input#createdAt.form-control(type='text', value=formatDateTime(user.createdAt), readonly, disabled)
             
             h5.mt-4.mb-3 Alterar Senha
             

@@ -42,7 +42,7 @@ block content
                     span.badge.bg-success Ativo
                   else
                     span.badge.bg-secondary Inativo
-                td.date-cell #{user.lastLogin ? user.lastLogin.toLocaleString('pt-BR') : 'Nunca'}
+                td.date-cell #{user.lastLogin ? formatDateTime(user.lastLogin) : 'Nunca'}
                 td.action-cell
                   .table-actions
                     a.btn.btn-sm.btn-primary.action-btn(href=`/dashboard/users/edit/${user.id}`, title='Editar')

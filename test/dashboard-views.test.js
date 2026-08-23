@@ -7,13 +7,19 @@ const {
   formatCertificateRequestMetadata,
   formatCertificateRequestPayload
 } = require('../src/services/certificate-request-metadata');
+const {
+  formatDate,
+  formatDateTime
+} = require('../src/services/datetime');
 
 const viewsPath = path.join(__dirname, '..', 'src', 'views');
 
 function renderView(relativePath, locals) {
   return pug.renderFile(path.join(viewsPath, relativePath), {
     ...locals,
-    basedir: viewsPath
+    basedir: viewsPath,
+    formatDate,
+    formatDateTime
   });
 }
 
@@ -174,6 +180,31 @@ describe('dashboard views', () => {
 
     expect(html).toContain('Editar');
     expect(html).toContain('Excluir');
+  });
+
+  test('formats user list timestamps in Sao Paulo time', () => {
+    const html = renderView('dashboard/users.pug', {
+      title: 'Gerenciar Usuários',
+      user: {
+        id: 1,
+        fullName: 'Admin',
+        role: 'admin'
+      },
+      users: [
+        {
+          id: 2,
+          username: 'ANSIL4',
+          fullName: 'ANA SILVA',
+          email: 'ana@example.com',
+          role: 'user',
+          active: true,
+          lastLogin: new Date('2026-08-23T12:30:00.000Z'),
+          createdAt: new Date('2026-08-23T12:30:00.000Z')
+        }
+      ]
+    });
+
+    expect(html).toContain('23/08/2026, 09:30');
   });
 
   test('show visible action labels in certificates list', () => {

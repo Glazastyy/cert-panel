@@ -51,8 +51,8 @@ block content
                     span.entity-name #{cert.subject.companyName}
                     br
                     small.text-muted CNPJ: #{cert.subject.cnpj}
-                td.date-cell #{cert.createdAt.toLocaleDateString('pt-BR')}
-                td.date-cell #{cert.validTo.toLocaleDateString('pt-BR')}
+                td.date-cell #{formatDate(cert.createdAt)}
+                td.date-cell #{formatDate(cert.validTo)}
                 td.status-cell
                   if cert.revoked
                     span.badge.bg-danger Revogado

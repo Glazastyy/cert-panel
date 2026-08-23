@@ -79,10 +79,10 @@ block content
                     if delivery.lastError
                       div.small.text-muted #{delivery.lastError}
                   td.date-cell #{delivery.attempts}
-                  td.date-cell #{delivery.nextAttemptAt ? delivery.nextAttemptAt.toLocaleString('pt-BR') : '-'}
-                  td.date-cell #{delivery.createdAt ? delivery.createdAt.toLocaleString('pt-BR') : '-'}
-                  td.date-cell #{delivery.updatedAt ? delivery.updatedAt.toLocaleString('pt-BR') : '-'}
-                  td.date-cell #{delivery.sentAt ? delivery.sentAt.toLocaleString('pt-BR') : '-'}
+                  td.date-cell #{delivery.nextAttemptAt ? formatDateTime(delivery.nextAttemptAt) : '-'}
+                  td.date-cell #{delivery.createdAt ? formatDateTime(delivery.createdAt) : '-'}
+                  td.date-cell #{delivery.updatedAt ? formatDateTime(delivery.updatedAt) : '-'}
+                  td.date-cell #{delivery.sentAt ? formatDateTime(delivery.sentAt) : '-'}
             else
               tr
                 td.text-center.text-muted(colspan='10') Nenhum envio encontrado.

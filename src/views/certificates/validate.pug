@@ -44,7 +44,7 @@ block content
                   if validationResult.status === 'revoked'
                     .mb-3
                       strong Revogado em: 
-                      span #{new Date(validationResult.revokedAt).toLocaleDateString('pt-BR')}
+                      span #{formatDate(validationResult.revokedAt)}
                     
                     .mb-3
                       strong Motivo da Revogação: 
@@ -63,11 +63,11 @@ block content
                   
                   .mb-3
                     strong Emitido em: 
-                    span #{new Date(validationResult.validFrom).toLocaleDateString('pt-BR')}
+                    span #{formatDate(validationResult.validFrom)}
                   
                   .mb-3
                     strong Válido até: 
-                    span #{new Date(validationResult.validTo).toLocaleDateString('pt-BR')}
+                    span #{formatDate(validationResult.validTo)}
                   
                   .mb-3
                     strong Autoridade Certificadora: 
@@ -88,7 +88,7 @@ block content
                   else if validationResult.status === 'not-yet-valid'
                     .alert.alert-info.mt-3
                       i.bi.bi-info-circle-fill.me-2
-                      | Este certificado ainda não é válido. Sua validade inicia em #{new Date(validationResult.validFrom).toLocaleDateString('pt-BR')}.
+                      | Este certificado ainda não é válido. Sua validade inicia em #{formatDate(validationResult.validFrom)}.
               else
                 .alert.alert-danger
                   h5.alert-heading Certificado não encontrado

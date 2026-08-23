@@ -29,16 +29,16 @@ block content
               
               .mb-3
                 label.fw-bold Emitido em:
-                p #{certificate.createdAt.toLocaleDateString('pt-BR')}
+                p #{formatDate(certificate.createdAt)}
               
               .mb-3
                 label.fw-bold Válido até:
-                p #{certificate.validTo.toLocaleDateString('pt-BR')}
+                p #{formatDate(certificate.validTo)}
               
               if certificate.revoked
                 .mb-3
                   label.fw-bold Revogado em:
-                  p #{certificate.revokedAt.toLocaleDateString('pt-BR')}
+                  p #{formatDate(certificate.revokedAt)}
                 
                 .mb-3
                   label.fw-bold Motivo da Revogação:
@@ -58,7 +58,7 @@ block content
                 
                 .mb-3
                   label.fw-bold Data de Nascimento:
-                  p #{new Date(certificate.subject.birthDate).toLocaleDateString('pt-BR')}
+                  p #{formatDate(certificate.subject.birthDate)}
                 
                 .mb-3
                   label.fw-bold PIS/PASEP/NIS:

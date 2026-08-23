@@ -61,7 +61,7 @@ block content
                       td #{cert.type}
                       td
                         a(href=`/certificates/view/${cert.id}`) #{cert.serialNumber.substring(0, 8)}...
-                      td #{cert.createdAt.toLocaleDateString('pt-BR')}
+                      td #{formatDate(cert.createdAt)}
                       td
                         if cert.revoked
                           span.badge.bg-danger Revogado
@@ -124,7 +124,7 @@ block content
                 span.badge.bg-warning.text-dark Teste
               
               h6 Data e Hora do Servidor
-              p.mb-0 #{new Date().toLocaleString('pt-BR')}
+              p.mb-0 #{formatDateTime(new Date())}
 
 block scripts
   script.
